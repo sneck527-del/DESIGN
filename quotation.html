@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>室内装修报价系统</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<style>
+:root{--font-family:"Microsoft YaHei","PingFang SC",-apple-system,sans-serif;--primary:#e2e8f0;--primary-light:#cbd5e1;--accent:#3b82f6;--accent-light:#60a5fa;--accent-dim:rgba(59,130,246,0.12);--success:#10b981;--warning:#f59e0b;--danger:#ef4444;--bg:#0f172a;--bg-secondary:#1e293b;--card:#1e293b;--card-hover:#253349;--text:#e2e8f0;--text-light:#94a3b8;--text-dim:#64748b;--border:rgba(148,163,184,0.1);--border-strong:rgba(148,163,184,0.2);--input-bg:#0f172a;--hover-bg:rgba(59,130,246,0.06);--cat-bg:rgba(59,130,246,0.08);--sub-bg:rgba(30,41,59,0.6);--shadow:0 4px 24px rgba(0,0,0,0.3);--radius:12px;--radius-sm:8px;--header-bg:#0f172a;--th-bg:rgba(30,41,59,0.8);--th-color:#94a3b8;--total-bg:linear-gradient(135deg,#1e40af,#3b82f6);--total-color:#fff;--sidebar-bg:#0c1322;--sidebar-text:#94a3b8;--sidebar-hover:#1e293b;--sidebar-active:#3b82f6;--sidebar-width:240px;--glow:0 0 20px rgba(59,130,246,0.15)}
+[data-theme="light"]{--bg:#f1f5f9;--bg-secondary:#ffffff;--card:#ffffff;--card-hover:#f8fafc;--text:#1e293b;--text-light:#64748b;--text-dim:#94a3b8;--border:#e2e8f0;--border-strong:#cbd5e1;--input-bg:#f8fafc;--hover-bg:#f1f5f9;--cat-bg:#f1f5f9;--sub-bg:#f8fafc;--shadow:0 4px 24px rgba(0,0,0,0.08);--header-bg:#ffffff;--th-bg:#f1f5f9;--th-color:#64748b;--total-bg:linear-gradient(135deg,#1e40af,#3b82f6);--sidebar-bg:#ffffff;--sidebar-text:#64748b;--sidebar-hover:#f1f5f9;--sidebar-active:#3b82f6;--glow:none;--accent-dim:rgba(59,130,246,0.08)}
+[data-theme="gold"]{--accent:#c8a45c;--accent-light:#d4b878;--accent-dim:rgba(200,164,92,0.12);--total-bg:linear-gradient(135deg,#92400e,#c8a45c);--sidebar-active:#c8a45c;--glow:0 0 20px rgba(200,164,92,0.15);--success:#10b981;--warning:#f59e0b;--danger:#ef4444}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--font-family);background:var(--bg);color:var(--text);line-height:1.6;min-height:100vh;-webkit-font-smoothing:antialiased}
+.app-header{background:var(--header-bg);color:var(--text);padding:10px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;position:sticky;top:0;z-index:100;border-bottom:1px solid var(--border)}
+.app-header h1{font-size:18px;font-weight:700;letter-spacing:1px;display:flex;align-items:center;gap:8px}
+.app-header h1 .logo-icon{width:32px;height:32px;border-radius:8px;background:var(--total-bg);display:flex;align-items:center;justify-content:center;font-size:16px;color:#fff}
+.header-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ctrl-group{display:flex;align-items:center;gap:6px}
+.ctrl-group label{font-size:11px;color:var(--text-light);white-space:nowrap;font-weight:500}
+.ctrl-group select{padding:5px 8px;border:1px solid var(--border-strong);border-radius:6px;background:var(--input-bg);color:var(--text);font-size:11px;outline:none;cursor:pointer}
+.theme-btns{display:flex;gap:0;border-radius:8px;overflow:hidden;border:1px solid var(--border-strong)}
+.theme-btn{padding:5px 14px;border:none;background:transparent;color:var(--text-dim);cursor:pointer;font-size:11px;transition:all .2s;font-weight:500}
+.theme-btn:hover{color:var(--text);background:var(--hover-bg)}
+.theme-btn.active{background:var(--accent);color:#fff;font-weight:600}
+.plan-switcher{display:flex;gap:0;border-radius:8px;overflow:hidden;border:1px solid var(--border-strong)}
+.plan-btn{padding:5px 16px;border:none;background:transparent;color:var(--text-dim);cursor:pointer;font-size:12px;transition:all .2s;font-weight:500}
+.plan-btn:hover{color:var(--text)}
+.plan-btn.active{background:var(--accent);color:#fff;font-weight:600}
+.action-btns{display:flex;gap:6px}
+.btn{padding:6px 14px;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:500;transition:all .2s;display:inline-flex;align-items:center;gap:5px;font-family:var(--font-family)}
+.btn-primary{background:var(--accent);color:#fff;box-shadow:0 2px 8px rgba(59,130,246,0.3)}
+.btn-primary:hover{background:var(--accent-light)}
+.btn-outline{background:transparent;border:1px solid var(--border-strong);color:var(--text)}
+.btn-outline:hover{border-color:var(--accent);color:var(--accent)}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-danger:hover{opacity:.85}
+.btn-success{background:var(--success);color:#fff}
+.btn-sm{padding:4px 10px;font-size:11px}
+.btn-ghost{background:transparent;color:var(--text-light);border:none}
+.btn-ghost:hover{color:var(--text);background:var(--hover-bg)}
+.app-layout{display:flex;height:calc(100vh - 49px);overflow:hidden}
+.file-sidebar{width:var(--sidebar-width);min-width:var(--sidebar-width);background:var(--sidebar-bg);color:var(--sidebar-text);display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--border)}
+.sidebar-header{padding:14px 14px 10px;border-bottom:1px solid var(--border)}
+.sidebar-header h2{font-size:11px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px}
+.sidebar-actions{display:flex;flex-direction:column;gap:4px}
+.sidebar-btn{width:100%;padding:7px 10px;border:1px solid transparent;border-radius:8px;background:transparent;color:var(--sidebar-text);cursor:pointer;font-size:12px;text-align:left;transition:all .15s;display:flex;align-items:center;gap:8px;font-family:var(--font-family)}
+.sidebar-btn:hover{background:var(--sidebar-hover);color:var(--text)}
+.sidebar-btn .sb-icon{font-size:15px;width:20px;text-align:center;flex-shrink:0}
+.sidebar-btn-accent{border-color:var(--accent);color:var(--accent);border-width:1px}
+.sidebar-btn-accent:hover{background:var(--accent-dim)}
+.sidebar-btn-data{color:var(--success)}
+.sidebar-section{padding:10px 0;flex:1;overflow-y:auto}
+.sidebar-section-title{padding:4px 14px;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-dim);font-weight:600}
+.sidebar-file-list{padding:0 6px}
+.sidebar-file-item{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:8px;cursor:pointer;transition:all .12s;margin-bottom:1px}
+.sidebar-file-item:hover{background:var(--sidebar-hover)}
+.sidebar-file-item.active{background:var(--accent-dim)}
+.sidebar-file-item.active .sf-name{color:var(--accent)}
+.sf-icon{font-size:13px;width:18px;text-align:center;flex-shrink:0}
+.sf-info{flex:1;min-width:0}
+.sf-name{font-size:12px;color:var(--text-light);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.sf-date{font-size:10px;color:var(--text-dim);display:block}
+.sf-delete{opacity:0;border:none;background:none;color:var(--danger);cursor:pointer;font-size:14px;padding:2px;transition:opacity .12s}
+.sidebar-file-item:hover .sf-delete{opacity:.6}
+.sf-delete:hover{opacity:1!important}
+.sidebar-footer{padding:10px 14px;border-top:1px solid var(--border)}
+.boss-entry{width:100%;display:flex;align-items:center;gap:6px;padding:5px 8px;border:none;background:transparent;cursor:pointer;border-radius:6px;transition:all .2s;opacity:.15;font-size:11px;color:var(--text-dim)}
+.boss-entry:hover{opacity:.4;background:var(--sidebar-hover)}
+.boss-entry .boss-icon{font-size:14px}
+.app-main{flex:1;overflow-y:auto;padding:20px 24px;max-width:1400px}
+.app-main.narrow-main{max-width:960px}
+.view{display:none}.view.active{display:block}
+.welcome-view{display:flex;align-items:center;justify-content:center;min-height:60vh}
+.welcome-content{text-align:center;padding:40px}
+.welcome-content .wc-icon{font-size:56px;margin-bottom:16px;opacity:.6}
+.welcome-content h2{font-size:20px;color:var(--text);margin-bottom:6px}
+.welcome-content p{font-size:13px;color:var(--text-light);margin-bottom:28px}
+.welcome-actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.welcome-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 20px;text-align:center;cursor:pointer;transition:all .2s;width:150px}
+.welcome-card:hover{border-color:var(--accent);box-shadow:var(--glow);transform:translateY(-2px)}
+.welcome-card .wc-emoji{font-size:28px;margin-bottom:8px}
+.welcome-card h3{font-size:13px;color:var(--text);margin-bottom:3px}
+.welcome-card p{font-size:11px;color:var(--text-dim)}
+
+/* Dashboard */
+.dash-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.dash-stat-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px;transition:all .2s}
+.dash-stat-card:hover{border-color:var(--border-strong);box-shadow:var(--glow)}
+.dash-stat-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:10px}
+.dash-stat-value{font-size:24px;font-weight:700;color:var(--text);margin-bottom:2px}
+.dash-stat-label{font-size:12px;color:var(--text-light);font-weight:500}
+.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.dash-card{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.dash-card-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.dash-card-header h3{font-size:14px;font-weight:600;color:var(--text)}
+.dash-card-body{padding:16px 18px}
+.dash-table{width:100%;border-collapse:collapse;font-size:12px}
+.dash-table th{background:var(--bg-secondary);padding:8px 10px;text-align:left;font-weight:600;color:var(--text-light);border-bottom:1px solid var(--border);font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+.dash-table td{padding:8px 10px;border-bottom:1px solid var(--border);color:var(--text)}
+.dash-table tr:hover td{background:var(--hover-bg)}
+.dash-bar{height:6px;border-radius:3px;background:var(--bg-secondary);overflow:hidden;margin-top:4px}
+.dash-bar-fill{height:100%;border-radius:3px;transition:width .6s}
+.dash-nav{display:flex;gap:8px;margin-bottom:16px}
+.dash-nav-btn{padding:6px 16px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--text-light);cursor:pointer;font-size:12px;font-family:var(--font-family);transition:all .15s;font-weight:500}
+.dash-nav-btn:hover{border-color:var(--accent);color:var(--accent)}
+.dash-nav-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+/* Boss Dashboard */
+.boss-stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px}
+.boss-stat{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center}
+.boss-stat .value{font-size:28px;font-weight:700;margin:4px 0}
+.boss-stat .value.profit{color:var(--success)}
+.boss-stat .value.margin{color:var(--accent)}
+.boss-stat .value.cost{color:var(--warning)}
+.boss-stat .label{font-size:12px;color:var(--text-light)}
+.boss-config{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px}
+.boss-config h4{font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px}
+.boss-config-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.boss-config-item{display:flex;flex-direction:column;gap:3px}
+.boss-config-item label{font-size:11px;color:var(--text-light)}
+.boss-config-item input{padding:5px 8px;border:1px solid var(--border-strong);border-radius:6px;background:var(--input-bg);color:var(--text);font-size:12px;outline:none;text-align:center}
+
+/* Measurement & Quotation Views */
+.measurement-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px}
+.measurement-header h2{font-size:18px;color:var(--text);display:flex;align-items:center;gap:8px}
+.measurement-header-actions{display:flex;gap:8px}
+.project-name-input{font-size:22px;font-weight:700;border:none;border-bottom:2px solid var(--border);background:transparent;color:var(--text);padding:4px 8px;outline:none;width:280px;font-family:var(--font-family);transition:border-color .2s}
+.project-name-input:focus{border-color:var(--accent)}
+.ms-room-item{border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;background:var(--card);transition:all .15s}
+.ms-room-item:hover{border-color:var(--accent);box-shadow:var(--glow)}
+.ms-room-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.ms-room-name{font-weight:600;font-size:14px;color:var(--text)}
+.ms-room-type{font-size:10px;background:var(--accent);color:#fff;padding:2px 8px;border-radius:10px;font-weight:600}
+.ms-room-dims{font-size:12px;color:var(--text-light);margin-bottom:6px}
+.ms-room-detail{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;font-size:11px}
+.ms-detail-tag{background:var(--accent-dim);padding:4px 8px;border-radius:6px;text-align:center;color:var(--text-light)}
+.ms-detail-tag span{font-weight:600;color:var(--accent)}
+.ms-room-lists{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
+.ms-sub-list{font-size:11px;color:var(--text-light)}
+.ms-sub-list-title{font-weight:600;color:var(--text);margin-bottom:2px}
+.ms-sub-item{padding:2px 0}
+.ms-room-actions{display:flex;gap:5px;margin-top:8px}
+.quotation-layout{display:grid;grid-template-columns:360px 1fr;gap:16px;align-items:start}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.card-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--bg-secondary)}
+.card-header h2{font-size:14px;font-weight:600;color:var(--text)}
+.card-body{padding:16px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.form-group{display:flex;flex-direction:column;gap:2px}
+.form-group.full{grid-column:1/-1}
+.form-group label{font-size:11px;color:var(--text-light);font-weight:500}
+.form-group input,.form-group select,.form-group textarea{padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;outline:none;transition:border-color .2s;background:var(--input-bg);color:var(--text);font-family:var(--font-family)}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-dim)}
+.form-group textarea{resize:vertical;min-height:50px}
+.room-item{border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px;background:var(--card);transition:all .15s}
+.room-item:hover{border-color:var(--accent);box-shadow:var(--glow)}
+.room-item-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px}
+.room-item-name{font-weight:600;font-size:13px;color:var(--text)}
+.room-item-type{font-size:10px;background:var(--accent);color:#fff;padding:2px 7px;border-radius:10px;font-weight:600}
+.room-item-dims{font-size:11px;color:var(--text-light);margin-bottom:4px}
+.room-item-areas{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;font-size:10px}
+.room-area-tag{background:var(--accent-dim);padding:2px 6px;border-radius:4px;text-align:center;color:var(--text-light)}
+.room-area-tag span{font-weight:600;color:var(--accent)}
+.room-item-actions{display:flex;gap:5px;margin-top:6px}
+.room-item-tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
+.room-tag{font-size:10px;padding:1px 6px;border-radius:4px;background:var(--accent);color:#fff}
+.sub-section{margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+.sub-section h4{font-size:12px;font-weight:600;margin-bottom:6px;color:var(--text)}
+.btn-x{width:20px;height:20px;border:none;background:var(--danger);color:#fff;border-radius:50%;cursor:pointer;font-size:12px;line-height:1;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.btn-x:hover{opacity:.8}
+.quote-table-wrapper{overflow-x:auto}
+.quote-table{width:100%;border-collapse:collapse;font-size:11px}
+.quote-table th{background:var(--th-bg);color:var(--th-color);padding:7px 8px;text-align:center;font-weight:600;white-space:nowrap;position:sticky;top:0;font-size:10px;text-transform:uppercase;letter-spacing:.5px}
+.quote-table td{padding:5px 7px;border-bottom:1px solid var(--border);text-align:center;vertical-align:middle}
+.quote-table tr:hover td{background:var(--hover-bg)}
+.quote-table .cat-row td{background:var(--accent-dim);font-weight:600;color:var(--text);text-align:left;padding:7px 10px;font-size:12px}
+.quote-table .sub-row td{background:var(--sub-bg);font-weight:600;border-top:1px solid var(--border-strong)}
+.qt-input{padding:2px 4px;border:1px solid transparent;border-radius:4px;font-size:11px;outline:none;background:transparent;color:var(--text);font-family:var(--font-family);transition:border-color .2s;width:100%}
+.qt-input:hover{border-color:var(--border)}
+.qt-input:focus{border-color:var(--accent);background:var(--input-bg)}
+.qt-name{width:110px;text-align:left}.qt-desc{width:160px;text-align:left}.qt-qty{width:55px}.qt-unit{width:35px}.qt-price{width:60px}
+.col-num{width:35px}.col-amount{min-width:70px;font-weight:600}.col-action{width:30px}
+.summary-row{display:flex;justify-content:space-between;align-items:center;padding:7px 14px;border-bottom:1px solid var(--border)}
+.summary-row:last-child{border-bottom:none}
+.summary-label{font-size:12px;color:var(--text-light)}
+.summary-value{font-size:13px;font-weight:600}
+.summary-row.total{background:var(--total-bg);color:var(--total-color);border-radius:10px;margin-top:6px;padding:12px 14px}
+.summary-row.total .summary-label{color:rgba(255,255,255,0.85);font-size:14px}
+.summary-row.total .summary-value{color:#fff;font-size:20px}
+.rate-input{width:50px;padding:2px 4px;border:1px solid var(--border);border-radius:4px;text-align:center;font-size:11px;outline:none;background:var(--input-bg);color:var(--text);font-family:var(--font-family)}
+
+/* Custom Notes */
+.notes-area{margin-top:12px}
+.notes-area label{font-size:12px;color:var(--text-light);font-weight:600;display:block;margin-bottom:6px}
+.notes-area textarea{width:100%;min-height:80px;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--input-bg);color:var(--text);font-family:var(--font-family);font-size:12px;outline:none;resize:vertical;line-height:1.8}
+.notes-area textarea:focus{border-color:var(--accent)}
+
+/* Modals */
+.modal-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);z-index:1000;justify-content:center;align-items:flex-start;padding-top:40px;overflow-y:auto}
+.modal-overlay.active{display:flex}
+.modal-content{background:var(--card);border:1px solid var(--border-strong);border-radius:16px;width:800px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,0.4);margin-bottom:40px}
+.modal-content.sm{width:480px}.modal-content.md{width:600px}.modal-content.lg{width:960px}.modal-content.xl{width:1060px}
+.modal-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.modal-header h3{font-size:15px;font-weight:600;color:var(--text)}
+.modal-close{width:28px;height:28px;border:none;background:transparent;font-size:18px;cursor:pointer;color:var(--text-light);border-radius:6px;display:flex;align-items:center;justify-content:center}
+.modal-close:hover{background:var(--hover-bg);color:var(--text)}
+.modal-body{padding:18px;max-height:70vh;overflow-y:auto}
+.modal-footer{padding:12px 18px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
+.empty-state{text-align:center;padding:30px 16px;color:var(--text-dim)}
+.empty-state .icon{font-size:40px;margin-bottom:8px;opacity:.5}
+.empty-state p{font-size:12px}
+.lib-table{width:100%;border-collapse:collapse;font-size:11px}
+.lib-table th{background:var(--bg-secondary);padding:6px 8px;text-align:left;font-weight:600;color:var(--text-light);border-bottom:1px solid var(--border);white-space:nowrap;font-size:10px}
+.lib-table td{padding:5px 8px;border-bottom:1px solid var(--border);vertical-align:middle}
+.lib-table tr:hover td{background:var(--hover-bg)}
+.lib-filter{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center}
+.lib-filter select,.lib-filter input{padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;outline:none;background:var(--input-bg);color:var(--text);font-family:var(--font-family)}
+.st-item{border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:6px;background:var(--hover-bg)}
+.st-item-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.st-item-name{font-weight:600;font-size:13px;color:var(--text)}
+.door-win-row{display:flex;align-items:center;gap:5px;margin-bottom:5px;padding:5px 8px;background:var(--bg-secondary);border-radius:6px}
+.door-win-row input{padding:4px 6px;border:1px solid var(--border);border-radius:5px;font-size:11px;width:65px;outline:none;background:var(--input-bg);color:var(--text);font-family:var(--font-family)}
+.door-win-row span{font-size:11px;color:var(--text-light)}
+.equip-row,.custom-row,.fw-row{display:flex;align-items:center;gap:5px;margin-bottom:5px;padding:5px 8px;background:var(--bg-secondary);border-radius:6px;flex-wrap:wrap}
+.equip-row input,.custom-row input,.fw-row input{padding:4px 6px;border:1px solid var(--border);border-radius:5px;font-size:11px;outline:none;background:var(--input-bg);color:var(--text);font-family:var(--font-family)}
+.section-toggle{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.section-toggle label{display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:5px 10px;border:1px solid var(--border);border-radius:6px;transition:all .15s}
+.section-toggle label:hover{border-color:var(--accent)}
+.section-toggle label input[type="checkbox"]{width:15px;height:15px;cursor:pointer}
+.section-toggle label.checked{background:var(--accent);color:#fff;border-color:var(--accent)}
+.mat-form{background:var(--bg-secondary);padding:12px;border-radius:10px;margin-bottom:10px}
+.mat-form .form-grid{gap:8px}
+.toast{position:fixed;top:70px;right:20px;background:var(--card);color:var(--text);padding:10px 20px;border-radius:8px;font-size:13px;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;border:1px solid var(--border-strong);box-shadow:var(--shadow)}
+.toast.show{opacity:1}
+.print-area{display:none}
+.import-file-list{display:flex;flex-direction:column;gap:6px}
+.import-file-item{display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:all .15s;background:var(--hover-bg)}
+.import-file-item:hover{border-color:var(--accent)}
+.import-file-item.selected{border-color:var(--accent);background:var(--accent-dim)}
+.ifi-icon{font-size:24px;width:36px;text-align:center}
+.ifi-info{flex:1}.ifi-name{font-size:13px;font-weight:600;color:var(--text)}.ifi-detail{font-size:10px;color:var(--text-dim);margin-top:1px}
+.import-room-check{display:flex;align-items:flex-start;gap:8px;padding:8px;border:1px solid var(--border);border-radius:8px;margin-bottom:4px;background:var(--hover-bg)}
+.import-room-check label{display:flex;align-items:flex-start;gap:6px;cursor:pointer;width:100%}
+.import-room-check input[type="checkbox"]{margin-top:2px;width:15px;height:15px;cursor:pointer}
+.irc-info{flex:1}.irc-name{font-weight:600;font-size:12px;color:var(--text)}.irc-detail{font-size:10px;color:var(--text-light)}
+.file-rename-input{border:1px solid var(--accent);border-radius:4px;padding:2px 6px;font-size:11px;background:var(--input-bg);color:var(--text);font-family:var(--font-family);width:100%;outline:none}
+
+/* Product Database */
+.pdb-layout{display:grid;grid-template-columns:180px 1fr;gap:14px;min-height:480px}
+.pdb-cat-item{padding:6px 10px;cursor:pointer;font-size:12px;border-radius:6px;transition:all .12s;display:flex;align-items:center;gap:5px;color:var(--text-light)}
+.pdb-cat-item:hover{background:var(--hover-bg)}
+.pdb-cat-item.active{background:var(--accent-dim);color:var(--accent)}
+.pdb-cat-main{font-weight:700;font-size:11px;padding:8px 10px;color:var(--text-dim);border-bottom:1px solid var(--border);margin-top:8px;letter-spacing:.5px}
+.pdb-cat-main:first-child{margin-top:0}
+.pdb-sub-list{padding-left:12px}
+.pdb-sub-item{padding:4px 8px;font-size:11px;color:var(--text-dim);cursor:pointer;border-radius:4px;transition:all .12s;margin-bottom:1px}
+.pdb-sub-item:hover{background:var(--hover-bg);color:var(--text)}
+.pdb-sub-item.active{background:var(--accent-dim);color:var(--accent);font-weight:600}
+.pdb-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.pdb-toolbar input,.pdb-toolbar select{padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;outline:none;background:var(--input-bg);color:var(--text);font-family:var(--font-family)}
+.pdb-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
+.pdb-card{border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--bg-secondary);transition:all .15s;cursor:pointer}
+.pdb-card:hover{border-color:var(--accent);box-shadow:var(--glow);transform:translateY(-1px)}
+.pdb-card-img{height:120px;background:var(--bg);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.pdb-card-img img{width:100%;height:100%;object-fit:cover}
+.pdb-card-img .pdb-no-img{font-size:32px;opacity:.2}
+.pdb-card-body{padding:8px 10px}
+.pdb-card-name{font-weight:600;font-size:12px;color:var(--text);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pdb-card-brand{font-size:10px;color:var(--text-dim);margin-bottom:2px}
+.pdb-card-specs{font-size:10px;color:var(--text-dim)}
+.pdb-card-price{font-size:14px;font-weight:700;color:var(--accent);margin-top:3px}
+.pdb-card-price span{font-size:10px;font-weight:400;color:var(--text-dim)}
+.pdb-form-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.pdb-form-group{display:flex;flex-direction:column;gap:2px}
+.pdb-form-group.full{grid-column:1/-1}
+.pdb-form-group label{font-size:11px;color:var(--text-light);font-weight:500}
+.pdb-form-group input,.pdb-form-group select,.pdb-form-group textarea{padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;outline:none;background:var(--input-bg);color:var(--text);font-family:var(--font-family)}
+.pdb-form-group textarea{resize:vertical;min-height:40px}
+.pdb-photo-upload{border:2px dashed var(--border-strong);border-radius:8px;padding:16px;text-align:center;cursor:pointer;transition:all .15s;min-height:100px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
+.pdb-photo-upload:hover{border-color:var(--accent);background:var(--accent-dim)}
+.pdb-photo-upload .upload-icon{font-size:28px;opacity:.3}
+.pdb-photo-upload .upload-text{font-size:11px;color:var(--text-dim)}
+.pdb-photo-preview{position:relative;display:inline-block}
+.pdb-photo-preview img{max-width:180px;max-height:130px;border-radius:6px;border:1px solid var(--border)}
+.pdb-photo-preview .photo-remove{position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:var(--danger);color:#fff;border:none;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center}
+.pdb-select-list{display:flex;flex-direction:column;gap:5px}
+.pdb-select-item{display:flex;align-items:center;gap:8px;padding:7px 8px;border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:all .12s;background:var(--hover-bg)}
+.pdb-select-item:hover{border-color:var(--accent)}
+.pdb-select-item.selected{border-color:var(--accent);background:var(--accent-dim)}
+.psi-thumb{width:42px;height:42px;border-radius:6px;overflow:hidden;flex-shrink:0;background:var(--bg);display:flex;align-items:center;justify-content:center}
+.psi-thumb img{width:100%;height:100%;object-fit:cover}
+.psi-info{flex:1;min-width:0}.psi-name{font-weight:600;font-size:12px;color:var(--text)}.psi-detail{font-size:10px;color:var(--text-dim)}
+.psi-price{font-size:12px;font-weight:600;color:var(--accent);white-space:nowrap}
+.psi-qty{width:55px;padding:3px;border:1px solid var(--border);border-radius:5px;font-size:11px;text-align:center;background:var(--input-bg);color:var(--text);font-family:var(--font-family);outline:none}
+
+/* Export version selector */
+.export-dropdown{position:relative;display:inline-block}
+.export-menu{display:none;position:absolute;top:100%;right:0;margin-top:4px;background:var(--card);border:1px solid var(--border-strong);border-radius:10px;overflow:hidden;box-shadow:var(--shadow);z-index:50;min-width:140px}
+.export-menu.show{display:block}
+.export-menu-item{display:flex;align-items:center;gap:8px;padding:8px 14px;cursor:pointer;font-size:12px;color:var(--text);transition:all .1s;border:none;background:none;width:100%;text-align:left;font-family:var(--font-family)}
+.export-menu-item:hover{background:var(--hover-bg);color:var(--accent)}
+
+/* Boss password modal */
+.boss-pwd-wrap{text-align:center;padding:20px}
+.boss-pwd-wrap .lock-icon{font-size:40px;margin-bottom:12px;opacity:.6}
+.boss-pwd-wrap input{width:180px;padding:8px 12px;border:1px solid var(--border-strong);border-radius:8px;text-align:center;font-size:16px;letter-spacing:8px;background:var(--input-bg);color:var(--text);outline:none;font-family:var(--font-family)}
+.boss-pwd-wrap input:focus{border-color:var(--accent)}
+.boss-pwd-hint{font-size:10px;color:var(--text-dim);margin-top:8px}
+
+@media print{body{background:#fff!important;font-family:"Microsoft YaHei",sans-serif!important}.app-header,.action-btns,.plan-switcher,.theme-btns,.ctrl-group,.modal-overlay,.room-item-actions,.btn-x,.col-action,.no-print,.qt-input,.file-sidebar,.notes-area,.export-dropdown,.export-menu{display:none!important}*{color:#000!important;border-color:#ccc!important;background:transparent!important;box-shadow:none!important}.app-layout{display:block}.app-main{display:block;max-width:100%;padding:0}.card{border:1px solid #ccc;page-break-inside:avoid}.quote-table th{background:#333!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;color:#fff!important}.summary-row.total{background:#333!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;color:#fff!important}}
+@media(max-width:900px){.app-layout{flex-direction:column;height:auto}.file-sidebar{width:100%;min-width:100%;max-height:200px}.quotation-layout{grid-template-columns:1fr}.modal-content{width:95vw}.pdb-layout{grid-template-columns:1fr}.dash-stats{grid-template-columns:1fr 1fr}.dash-grid{grid-template-columns:1fr}.boss-stat-row{grid-template-columns:1fr}.boss-config-grid{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<header class="app-header">
+<h1><span class="logo-icon">🏠</span> 室内装修<span style="color:var(--accent)">报价系统</span></h1>
+<div class="header-controls">
+<div class="ctrl-group"><label>主题</label>
+<div class="theme-btns">
+<button class="theme-btn" onclick="setTheme('dark')">深色</button>
+<button class="theme-btn" onclick="setTheme('light')">亮色</button>
+<button class="theme-btn" onclick="setTheme('gold')">金色</button>
+</div></div>
+<div class="ctrl-group"><label>字体</label>
+<select id="fontSelect" onchange="setFont(this.value)">
+<option value='"Microsoft YaHei","PingFang SC",sans-serif'>微软雅黑</option>
+<option value='"SimHei","Heiti SC",sans-serif'>黑体</option>
+<option value='"PingFang SC","Microsoft YaHei",sans-serif'>苹方</option>
+</select></div>
+<div class="plan-switcher">
+<button class="plan-btn plan-luxury active" onclick="setPlan('luxury')">豪华型</button>
+<button class="plan-btn plan-premium" onclick="setPlan('premium')">精装型</button>
+<button class="plan-btn plan-standard" onclick="setPlan('standard')">标准型</button>
+</div>
+<div class="action-btns">
+<button class="btn btn-ghost btn-sm" onclick="openMaterialLib()">材料库</button>
+<button class="btn btn-ghost btn-sm" onclick="openSpaceTypeLib()">空间库</button>
+<button class="btn btn-ghost btn-sm" id="watermarkBtn" onclick="toggleWatermark()">水印</button>
+<div class="export-dropdown"><button class="btn btn-primary btn-sm" onclick="toggleExportMenu(event)">导出PDF ▾</button><div class="export-menu" id="exportMenu"><button class="export-menu-item" onclick="exportPDF('simple')">简约版</button><button class="export-menu-item" onclick="exportPDF('detailed')">详细版</button><button class="export-menu-item" onclick="exportPDF('contract')">合同版</button></div></div>
+<div class="export-dropdown"><button class="btn btn-outline btn-sm" onclick="togglePrintMenu(event)">打印 ▾</button><div class="export-menu" id="printMenu"><button class="export-menu-item" onclick="printQuote('simple')">简约版</button><button class="export-menu-item" onclick="printQuote('detailed')">详细版</button><button class="export-menu-item" onclick="printQuote('contract')">合同版</button></div></div>
+</div>
+</div>
+</header>
+<div class="app-layout">
+<aside class="file-sidebar">
+<div class="sidebar-header">
+<h2>文件管理</h2>
+<div class="sidebar-actions">
+<button class="sidebar-btn" onclick="createNewFile('quotation')"><span class="sb-icon">📋</span>新建报价</button>
+<button class="sidebar-btn" onclick="createNewFile('measurement')"><span class="sb-icon">📐</span>新建量房</button>
+<button class="sidebar-btn sidebar-btn-accent" onclick="openImportDialog()"><span class="sb-icon">📥</span>导入量房</button>
+<button class="sidebar-btn sidebar-btn-data" onclick="showDashboard()"><span class="sb-icon">📊</span>数据看板</button>
+<button class="sidebar-btn" onclick="openProductDatabase()" style="color:var(--accent)"><span class="sb-icon">🗃️</span>产品数据库</button>
+</div>
+</div>
+<div class="sidebar-section">
+<div class="sidebar-section-title">最近文件</div>
+<div class="sidebar-file-list" id="sidebarFileList"></div>
+</div>
+<div class="sidebar-footer">
+<button class="boss-entry" onclick="openBossLogin()"><span class="boss-icon">🔒</span> <span>系统设置</span></button>
+</div>
+</aside>
+<div class="app-main" id="appMain">
+<div class="view active" id="welcomeView"><div class="welcome-view"><div class="welcome-content"><div class="wc-icon">🏠</div><h2>室内装修报价系统</h2><p>新建文件或打开最近文档</p><div class="welcome-actions"><div class="welcome-card" onclick="createNewFile('quotation')"><div class="wc-emoji">📋</div><h3>新建报价</h3><p>创建报价文件</p></div><div class="welcome-card" onclick="createNewFile('measurement')"><div class="wc-emoji">📐</div><h3>新建量房</h3><p>记录房间尺寸</p></div><div class="welcome-card" onclick="openProductDatabase()"><div class="wc-emoji">🗃️</div><h3>产品数据库</h3><p>管理产品信息</p></div><div class="welcome-card" onclick="showDashboard()"><div class="wc-emoji">📊</div><h3>数据看板</h3><p>查看数据统计</p></div></div></div></div>
+<div class="view" id="measurementView"><div class="measurement-header"><h2><span>📐</span><input class="project-name-input" id="msProjectName" placeholder="输入项目名称" oninput="onMsProjectNameChange()"></h2><div class="measurement-header-actions"><button class="btn btn-primary" onclick="saveCurrentFile()">保存文件</button></div></div><div class="card"><div class="card-header"><h2>房间尺寸记录</h2><button class="btn btn-primary btn-sm" onclick="openMsRoomEditor()">+ 添加房间</button></div><div class="card-body" id="msRoomList"></div></div></div>
+<div class="view" id="quotationView"><div class="quotation-layout"><div class="left-panel"><div class="card"><div class="card-header"><h2>客户信息</h2></div><div class="card-body"><div class="form-grid"><div class="form-group"><label>客户姓名</label><input id="custName" oninput="onCustChange()"></div><div class="form-group"><label>联系电话</label><input id="custPhone" oninput="onCustChange()"></div><div class="form-group full"><label>装修地址</label><input id="custAddress" oninput="onCustChange()"></div><div class="form-group"><label>报价日期</label><input type="date" id="custDate" oninput="onCustChange()"></div><div class="form-group"><label>建筑面积(㎡)</label><input type="number" id="custArea" oninput="onCustChange()" step="0.01"></div></div></div></div><div class="card"><div class="card-header"><h2>房间信息</h2><button class="btn btn-primary btn-sm" onclick="openRoomEditor()">+ 添加房间</button></div><div class="card-body" id="roomList"></div></div></div>
+<div class="right-panel"><div class="card"><div class="card-header"><h2>报价明细</h2><span id="planBadge" class="room-tag" style="font-size:10px">豪华型</span><button class="btn btn-outline btn-sm" onclick="openAddProductsToQuote()" title="从产品库添加">+ 产品清单</button></div><div class="card-body quote-table-wrapper" id="quoteTableWrapper"></div></div><div class="card"><div class="card-header"><h2>费用汇总</h2></div><div class="card-body" id="summarySection"></div></div>
+<div class="card"><div class="card-header"><h2>备注信息</h2></div><div class="card-body notes-area"><textarea id="customNotes" placeholder="输入自定义备注信息，如施工要求、注意事项、付款方式等..." oninput="onNotesChange()"></textarea></div></div></div></div></div>
+<div class="view" id="dashboardView"></div>
+<div class="view" id="bossView"></div>
+</div>
+</div>
+<div class="modal-overlay" id="materialLibModal"><div class="modal-content"><div class="modal-header"><h3>材料/品牌/价格库</h3><button class="modal-close" onclick="closeModal('materialLibModal')">×</button></div><div class="modal-body" id="materialLibBody"></div><div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('materialLibModal')">关闭</button></div></div></div>
+<div class="modal-overlay" id="spaceTypeLibModal"><div class="modal-content sm"><div class="modal-header"><h3>空间类型库</h3><button class="modal-close" onclick="closeModal('spaceTypeLibModal')">×</button></div><div class="modal-body" id="spaceTypeLibBody"></div><div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('spaceTypeLibModal')">关闭</button></div></div></div>
+<div class="modal-overlay" id="roomEditorModal"><div class="modal-content"><div class="modal-header"><h3 id="roomEditorTitle">添加房间</h3><button class="modal-close" onclick="closeModal('roomEditorModal')">×</button></div><div class="modal-body" id="roomEditorBody"></div><div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('roomEditorModal')">取消</button><button class="btn btn-primary" onclick="saveRoom()">保存</button></div></div></div>
+<div class="modal-overlay" id="msRoomEditorModal"><div class="modal-content"><div class="modal-header"><h3 id="msRoomEditorTitle">添加房间</h3><button class="modal-close" onclick="closeModal('msRoomEditorModal')">×</button></div><div class="modal-body" id="msRoomEditorBody"></div><div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('msRoomEditorModal')">取消</button><button class="btn btn-primary" onclick="saveMsRoom()">保存</button></div></div></div>
+<div class="modal-overlay" id="importDialogModal"><div class="modal-content md"><div class="modal-header"><h3>导入量房文件</h3><button class="modal-close" onclick="closeModal('importDialogModal')">×</button></div><div class="modal-body" id="importDialogBody"></div><div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('importDialogModal')">取消</button><button class="btn btn-primary" id="importNextBtn" onclick="showImportConfirmation()" disabled>下一步</button></div></div></div>
+<div class="modal-overlay" id="importConfirmModal"><div class="modal-content md"><div class="modal-header"><h3>确认导入</h3><button class="modal-close" onclick="closeModal('importConfirmModal')">×</button></div><div class="modal-body" id="importConfirmBody"></div><div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('importConfirmModal')">取消</button><button class="btn btn-primary" onclick="doImportRooms()">确认导入</button></div></div></div>
+<div class="modal-overlay" id="saveFileModal"><div class="modal-content sm"><div class="modal-header"><h3>保存文件</h3><button class="modal-close" onclick="closeModal('saveFileModal')">×</button></div><div class="modal-body" id="saveFileBody"></div><div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('saveFileModal')">取消</button><button class="btn btn-primary" onclick="confirmSaveFile()">保存</button></div></div></div>
+<div class="modal-overlay" id="productDbModal"><div class="modal-content xl"><div class="modal-header"><h3>产品数据库</h3><button class="modal-close" onclick="closeModal('productDbModal')">×</button></div><div class="modal-body" id="productDbBody" style="max-height:none;overflow:visible"></div><div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('productDbModal')">关闭</button></div></div></div>
+<div class="modal-overlay" id="addProdToQuoteModal"><div class="modal-content lg"><div class="modal-header"><h3>从产品库添加到报价</h3><button class="modal-close" onclick="closeModal('addProdToQuoteModal')">×</button></div><div class="modal-body" id="addProdToQuoteBody"></div><div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('addProdToQuoteModal')">取消</button><button class="btn btn-primary" onclick="confirmAddProductsToQuote()">添加</button></div></div></div>
+<div class="modal-overlay" id="bossPwdModal"><div class="modal-content sm"><div class="modal-header"><h3>身份验证</h3><button class="modal-close" onclick="closeModal('bossPwdModal')">×</button></div><div class="modal-body" id="bossPwdBody"></div></div></div>
+<div class="print-area" id="printArea"></div>
+<div class="toast" id="toast"></div>
+<script src="materials-data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
