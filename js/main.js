@@ -10,6 +10,53 @@ function debounceRenderQuoteTable() {
   }, 16); // 约60fps
 }
 
+// 中国法定节假日列表（简化版）
+var CHINA_HOLIDAYS = [
+  // 2025年节假日（示例）
+  '2025-01-01', // 元旦
+  '2025-02-01', '2025-02-02', '2025-02-03', // 春节前
+  '2025-02-10', '2025-02-11', '2025-02-12', '2025-02-13', '2025-02-14', '2025-02-15', '2025-02-16', // 春节
+  '2025-04-04', '2025-04-05', '2025-04-06', // 清明节
+  '2025-05-01', '2025-05-02', '2025-05-03', '2025-05-04', '2025-05-05', // 劳动节
+  '2025-06-08', '2025-06-09', '2025-06-10', // 端午节
+  '2025-09-15', '2025-09-16', '2025-09-17', // 中秋节
+  '2025-10-01', '2025-10-02', '2025-10-03', '2025-10-04', '2025-10-05', '2025-10-06', '2025-10-07' // 国庆节
+];
+
+// 检查日期是否为节假日
+function isHoliday(dateStr) {
+  var date = new Date(dateStr);
+  // 检查周末（周六=6，周日=0）
+  if (S.respectHolidays !== false) {
+    var day = date.getDay();
+    if (day === 0 || day === 6) return true;
+  }
+  // 检查法定节假日列表
+  if (CHINA_HOLIDAYS.includes(dateStr)) return true;
+  return false;
+}
+
+// 添加工作日天数，跳过节假日
+function addBusinessDays(startDateStr, days) {
+  if (!S.respectHolidays) {
+    // 不遵守节假日，直接加天数
+    var date = new Date(startDateStr);
+    date.setDate(date.getDate() + days);
+    return date.toISOString().split('T')[0];
+  }
+  
+  var date = new Date(startDateStr);
+  var added = 0;
+  while (added < days) {
+    date.setDate(date.getDate() + 1);
+    var dateStr = date.toISOString().split('T')[0];
+    if (!isHoliday(dateStr)) {
+      added++;
+    }
+  }
+  return date.toISOString().split('T')[0];
+}
+
 var S={
   currentFileId:null,files:[],recentFileIds:[],
   customerInfo:{name:'',phone:'',address:'',designer:'',designerPhone:'',plan:'luxury',quoteMode:'full',date:new Date().toISOString().split('T')[0],area:''},
@@ -67,32 +114,703 @@ function undo(){
   document.getElementById('customNotes').value=S.customNotes;
   showToast('已撤销');
 }
-function initDefaults(){if(!S.materials)S.materials=JSON.parse(JSON.stringify(DEFAULT_MATERIALS));if(!S.spaceTypes)S.spaceTypes=JSON.parse(JSON.stringify(DEFAULT_SPACE_TYPES))}
-
-// ==================== PERSISTENCE ====================
-function loadState(){try{var f=localStorage.getItem('dq_files');if(f)S.files=JSON.parse(f);var r=localStorage.getItem('dq_recent');if(r)S.recentFileIds=JSON.parse(r);var s=localStorage.getItem('dq_settings');if(s){var d=JSON.parse(s);Object.keys(d).forEach(function(k){S[k]=d[k]})}var p=localStorage.getItem('dq_products');if(p)S.products=JSON.parse(p);migrateOldData();initDefaults()}catch(e){console.error(e);initDefaults()}}
-function saveSettings(){try{localStorage.setItem('dq_settings',JSON.stringify({currentPlan:S.currentPlan,currentTheme:S.currentTheme,managementFeeRate:S.managementFeeRate,taxRate:S.taxRate,garbageFee:S.garbageFee,protectionFee:S.protectionFee,watermarkEnabled:S.watermarkEnabled,watermarkText:S.watermarkText,colWidths:S.colWidths,materials:S.materials,spaceTypes:S.spaceTypes,bossPassword:S.bossPassword,costRates:S.costRates,ollamaUrl:S.ollamaUrl,ollamaModel:S.ollamaModel,aiProvider:S.aiProvider,aiApiKey:S.aiApiKey,aiApiUrl:S.aiApiUrl,aiOptimizeConstructionPrompt:S.aiOptimizeConstructionPrompt,aiOptimizeProductPrompt:S.aiOptimizeProductPrompt}))}catch(e){}}
-function saveFilesToStorage(){try{localStorage.setItem('dq_files',JSON.stringify(S.files));localStorage.setItem('dq_recent',JSON.stringify(S.recentFileIds))}catch(e){}}
-function saveProductsToStorage(){try{localStorage.setItem('dq_products',JSON.stringify(S.products))}catch(e){showToast('存储空间不足')}}
-function migrateOldData(){if(S.files.length>0)return;try{var o=localStorage.getItem('decorationQuoteV3');if(o){var d=JSON.parse(o);if(d.rooms&&d.rooms.length>0){var file={id:uid(),name:'旧版报价',type:'quotation',data:{customerInfo:d.customerInfo||S.customerInfo,rooms:d.rooms||[],quoteItems:d.quoteItems||[],productQuoteItems:[]},createdAt:Date.now(),updatedAt:Date.now()};S.files.push(file);S.recentFileIds=[file.id];saveFilesToStorage();localStorage.removeItem('decorationQuoteV3')}}}catch(e){}}
+function initDefaults(){if(!S.materials)S.materials=JSON.parse(JSON.stringify(DEFAULT_MATERIALS));if(!S.spaceTypes)S.spaceTypes=JSON.parse(JSON.stringify(DEFAULT_SPACE_TYPES));if(!S.fontSizes)S.fontSizes={table:12,header:12,project:14,description:11,input:11};if(!S.rowHeight)S.rowHeight=36;if(!S.colWidths)S.colWidths={}}
 function compressImage(file,maxW,quality,cb){var reader=new FileReader();reader.onload=function(e){var img=new Image();img.onload=function(){var c=document.createElement('canvas');var ratio=Math.min(maxW/img.width,1);c.width=Math.round(img.width*ratio);c.height=Math.round(img.height*ratio);c.getContext('2d').drawImage(img,0,0,c.width,c.height);cb(c.toDataURL('image/jpeg',quality))};img.src=e.target.result};reader.readAsDataURL(file)}
 
 // ==================== FILE MANAGEMENT ====================
 function createNewFile(type){checkDirty(function(){var file={id:uid(),name:type==='quotation'?'新建报价':'新建量房',type:type,data:type==='quotation'?{customerInfo:{name:'',phone:'',address:'',designer:'',designerPhone:'',plan:'luxury',quoteMode:'full',date:new Date().toISOString().split('T')[0],area:''},rooms:[],quoteItems:[],productQuoteItems:[],customNotes:''}:{projectName:'',customerInfo:{name:'',phone:'',address:'',designer:'',designerPhone:'',plan:'luxury',quoteMode:'full',date:new Date().toISOString().split('T')[0],area:''},rooms:[]},createdAt:Date.now(),updatedAt:Date.now()};S.files.push(file);openFile(file.id);saveFilesToStorage();showToast('已创建')})}
-function openFile(id){checkDirty(function(){var file=S.files.find(function(f){return f.id===id});if(!file)return;S.currentFileId=id;addToRecent(id);if(file.type==='quotation'){S.customerInfo=Object.assign({name:'',phone:'',address:'',designer:'',designerPhone:'',plan:'luxury',quoteMode:'full',date:new Date().toISOString().split('T')[0],area:''},file.data.customerInfo||{});S.rooms=file.data.rooms||[];S.rooms.forEach(function(r){if(!r.floor)r.floor='一楼'});S.quoteItems=file.data.quoteItems||[];S.productQuoteItems=file.data.productQuoteItems||[];S.customNotes=file.data.customNotes||'';if(S.customerInfo.plan)S.currentPlan=S.customerInfo.plan;showView('quotation');renderCustomerInfo();renderRoomList();renderQuoteTable();renderSummary();document.getElementById('customNotes').value=S.customNotes}else{S.msProjectName=file.data.projectName||'';S.msCustomerInfo=Object.assign({name:'',phone:'',address:'',designer:'',designerPhone:'',plan:'luxury',quoteMode:'full',date:new Date().toISOString().split('T')[0],area:''},file.data.customerInfo||{});S.msRooms=file.data.rooms||[];S.msRooms.forEach(function(r){if(!r.floor)r.floor='一楼'});showView('measurement');renderMeasurementView()}S.dirty=false;renderSidebar();saveFilesToStorage()})}
-function saveCurrentFile(){if(!S.currentFileId){showSaveFileDialog();return}var file=S.files.find(function(f){return f.id===S.currentFileId});if(!file)return;file.updatedAt=Date.now();if(file.type==='quotation'){if(S.customerInfo.address)file.name=S.customerInfo.address;file.data={customerInfo:S.customerInfo,rooms:S.rooms,quoteItems:S.quoteItems,productQuoteItems:S.productQuoteItems,customNotes:S.customNotes}}else{if(S.msProjectName)file.name=S.msProjectName;file.data={projectName:S.msProjectName,customerInfo:S.msCustomerInfo,rooms:S.msRooms}}addToRecent(file.id);S.dirty=false;saveFilesToStorage();saveSettings();renderSidebar();showToast('已保存')}function saveAndExit(){saveCurrentFile();S.currentFileId=null;S.dirty=false;showView('welcome')}
-function checkDirty(callback){if(S.dirty){var r=confirm('当前文件未保存，是否保存？');if(r){saveCurrentFile();callback()}else if(r===false){S.dirty=false;callback()}}else{callback()}}
+function openFile(id){
+  checkDirty(function(){
+    var file=S.files.find(function(f){return f.id===id});
+    if(!file)return;
+    S.currentFileId=id;
+    addToRecent(id);
+    if(file.type==='quotation'){
+      S.customerInfo=Object.assign({name:'',phone:'',address:'',designer:'',designerPhone:'',plan:'luxury',quoteMode:'full',date:new Date().toISOString().split('T')[0],area:''},file.data.customerInfo||{});
+      S.rooms=file.data.rooms||[];
+      S.rooms.forEach(function(r){if(!r.floor)r.floor='一楼'});
+      S.quoteItems=file.data.quoteItems||[];
+      S.productQuoteItems=file.data.productQuoteItems||[];
+      S.customNotes=file.data.customNotes||'';
+      // 加载施工数据
+      S.workers=file.data.workers||[];
+      S.constructionSchedule=file.data.constructionSchedule||[];
+      S.respectHolidays=file.data.respectHolidays!==false;
+      if(S.customerInfo.plan)S.currentPlan=S.customerInfo.plan;
+      showView('quotation');
+      renderCustomerInfo();
+      renderRoomList();
+      renderQuoteTable();
+      renderSummary();
+      document.getElementById('customNotes').value=S.customNotes
+    }else{
+      S.msProjectName=file.data.projectName||'';
+      S.msCustomerInfo=Object.assign({name:'',phone:'',address:'',designer:'',designerPhone:'',plan:'luxury',quoteMode:'full',date:new Date().toISOString().split('T')[0],area:''},file.data.customerInfo||{});
+      S.msRooms=file.data.rooms||[];
+      S.msRooms.forEach(function(r){if(!r.floor)r.floor='一楼'});
+      showView('measurement');
+      renderMeasurementView()
+    }
+    S.dirty=false;
+    renderSidebar();
+    saveFilesToStorage()
+  })
+}
+function saveCurrentFile(){
+  if(!S.currentFileId){showSaveFileDialog();return}
+  var file=S.files.find(function(f){return f.id===S.currentFileId});
+  if(!file)return;
+  file.updatedAt=Date.now();
+  if(file.type==='quotation'){
+    if(S.customerInfo.address)file.name=S.customerInfo.address;
+    // 自动生成施工进度（如果为空）
+    if((S.constructionSchedule||[]).length===0 && (S.quoteItems||[]).length>0){
+      generateConstructionSchedule();
+    }
+    // 保存施工数据到文件
+    file.data={
+      customerInfo:S.customerInfo,
+      rooms:S.rooms,
+      quoteItems:S.quoteItems,
+      productQuoteItems:S.productQuoteItems,
+      customNotes:S.customNotes,
+      workers:S.workers||[],
+      constructionSchedule:S.constructionSchedule||[],
+      respectHolidays:S.respectHolidays!==false
+    }
+  }else{
+    if(S.msProjectName)file.name=S.msProjectName;
+    file.data={
+      projectName:S.msProjectName,
+      customerInfo:S.msCustomerInfo,
+      rooms:S.msRooms
+    }
+  }
+  addToRecent(file.id);
+  S.dirty=false;
+  saveFilesToStorage();
+  saveSettings();
+  renderSidebar();
+  showToast('已保存')
+}
+function saveAndExit(){
+  saveCurrentFile();
+  S.currentFileId=null;
+  S.dirty=false;
+  showView('welcome')
+}
+function checkDirty(callback){
+  console.log('checkDirty called, S.dirty=', S.dirty);
+  if(S.dirty){
+    var r=confirm('当前文件未保存，是否保存？');
+    console.log('User choice:', r);
+    if(r){
+      saveCurrentFile();
+      callback();
+    }else if(r===false){
+      S.dirty=false;
+      callback();
+    }
+  }else{
+    callback();
+  }
+}
 function showSaveFileDialog(){var file=S.files.find(function(f){return f.id===S.currentFileId});if(!file)return;document.getElementById('saveFileBody').innerHTML='<div class="form-group"><label>文件名称</label><input id="saveFileNameInput" value="'+esc(file.name)+'"></div>';openModal('saveFileModal')}
-function confirmSaveFile(){var n=document.getElementById('saveFileNameInput').value.trim();if(!n)return;var file=S.files.find(function(f){return f.id===S.currentFileId});if(!file)return;file.name=n;file.updatedAt=Date.now();if(file.type==='quotation')file.data={customerInfo:S.customerInfo,rooms:S.rooms,quoteItems:S.quoteItems,productQuoteItems:S.productQuoteItems,customNotes:S.customNotes};else file.data={projectName:S.msProjectName,customerInfo:S.msCustomerInfo,rooms:S.msRooms};closeModal('saveFileModal');saveFilesToStorage();saveSettings();renderSidebar();showToast('已保存')}
+function confirmSaveFile(){
+  var n=document.getElementById('saveFileNameInput').value.trim();
+  if(!n)return;
+  var file=S.files.find(function(f){return f.id===S.currentFileId});
+  if(!file)return;
+  file.name=n;
+  file.updatedAt=Date.now();
+  if(file.type==='quotation'){
+    // 自动生成施工进度（如果为空）
+    if((S.constructionSchedule||[]).length===0 && (S.quoteItems||[]).length>0){
+      generateConstructionSchedule();
+    }
+    file.data={
+      customerInfo:S.customerInfo,
+      rooms:S.rooms,
+      quoteItems:S.quoteItems,
+      productQuoteItems:S.productQuoteItems,
+      customNotes:S.customNotes,
+      workers:S.workers||[],
+      constructionSchedule:S.constructionSchedule||[],
+      respectHolidays:S.respectHolidays!==false
+    }
+  }else{
+    file.data={
+      projectName:S.msProjectName,
+      customerInfo:S.msCustomerInfo,
+      rooms:S.msRooms
+    }
+  }
+  closeModal('saveFileModal');
+  saveFilesToStorage();
+  saveSettings();
+  renderSidebar();
+  showToast('已保存')
+}
 function deleteFile(id){if(!confirm('确定删除？'))return;S.files=S.files.filter(function(f){return f.id!==id});S.recentFileIds=S.recentFileIds.filter(function(r){return r!==id});if(S.currentFileId===id){S.currentFileId=null;S.dirty=false;showView('welcome')}saveFilesToStorage();renderSidebar()}
 function renameFile(id){var file=S.files.find(function(f){return f.id===id});if(!file)return;var el=document.querySelector('.sf-item-name[data-id="'+id+'"]');if(!el)return;var input=document.createElement('input');input.className='file-rename-input';input.value=file.name;el.replaceWith(input);input.focus();input.select();function finish(){var v=input.value.trim();if(v&&v!==file.name){file.name=v;file.updatedAt=Date.now();saveFilesToStorage()}renderSidebar()}input.onblur=finish;input.onkeydown=function(e){if(e.key==='Enter')finish();if(e.key==='Escape')renderSidebar()}}
 function addToRecent(id){S.recentFileIds=S.recentFileIds.filter(function(r){return r!==id});S.recentFileIds.unshift(id);if(S.recentFileIds.length>15)S.recentFileIds=S.recentFileIds.slice(0,15)}
 function getRecentFiles(){return S.recentFileIds.map(function(id){return S.files.find(function(f){return f.id===id})}).filter(Boolean)}
 function renderSidebar(){var el=document.getElementById('sidebarFileList');var recent=getRecentFiles();if(!recent.length){el.innerHTML='<div style="padding:12px;text-align:center;font-size:11px;color:var(--text-dim)">暂无文件</div>';return}el.innerHTML=recent.map(function(f){var isActive=f.id===S.currentFileId;var icon=f.type==='quotation'?'📋':'📐';return '<div class="sidebar-file-item'+(isActive?' active':'')+'" onclick="openFile(\''+f.id+'\')"><span class="sf-icon">'+icon+'</span><div class="sf-info"><span class="sf-name sf-item-name" data-id="'+f.id+'" ondblclick="event.stopPropagation();renameFile(\''+f.id+'\')">'+esc(f.name)+'</span><span class="sf-date">'+formatDate(f.updatedAt)+'</span></div><button class="sf-delete" onclick="event.stopPropagation();deleteFile(\''+f.id+'\')">×</button></div>'}).join('')}
-function showView(view){document.querySelectorAll('.view').forEach(function(v){v.classList.remove('active')});var m=document.getElementById('appMain');if(view==='welcome'){document.getElementById('welcomeView').classList.add('active');m.classList.add('narrow-main')}else if(view==='measurement'){document.getElementById('measurementView').classList.add('active');m.classList.add('narrow-main')}else if(view==='quotation'){document.getElementById('quotationView').classList.add('active');m.classList.remove('narrow-main')}else if(view==='dashboard'){document.getElementById('dashboardView').classList.add('active');m.classList.remove('narrow-main')}else if(view==='boss'){document.getElementById('bossView').classList.add('active');m.classList.remove('narrow-main')}}
+function showView(view){document.querySelectorAll('.view').forEach(function(v){v.classList.remove('active')});var m=document.getElementById('appMain');if(view==='welcome'){document.getElementById('welcomeView').classList.add('active');m.classList.add('narrow-main')}else if(view==='measurement'){document.getElementById('measurementView').classList.add('active');m.classList.add('narrow-main')}else if(view==='quotation'){document.getElementById('quotationView').classList.add('active');m.classList.remove('narrow-main')}else if(view==='dashboard'){document.getElementById('dashboardView').classList.add('active');m.classList.remove('narrow-main')}else if(view==='construction'){document.getElementById('constructionView').classList.add('active');m.classList.remove('narrow-main');renderConstructionView()}else if(view==='boss'){document.getElementById('bossView').classList.add('active');m.classList.remove('narrow-main')}}
 function onNotesChange(){pushUndoState();S.customNotes=document.getElementById('customNotes').value;markDirty()}
 
 // ==================== DASHBOARD ====================
+function showConstructionView() {
+  checkDirty(function() {
+    renderConstructionView();
+    showView('construction');
+  });
+}
+
+function renderConstructionView() {
+  var el = document.getElementById('constructionView');
+  if (!el) return;
+  
+  var workers = S.workers || [];
+  var schedule = S.constructionSchedule || [];
+  var respectHolidays = S.respectHolidays !== false;
+  
+  var html = '<div class="construction-container">';
+  
+  // 头部导航
+  html += '<div class="construction-header">';
+  html += '<h2 style="display:flex;align-items:center;gap:6px"><span style="font-size:20px">👷</span>施工管理</h2>';
+  html += '<div style="display:flex;gap:8px;align-items:center">';
+  html += '<label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:12px"><input type="checkbox" id="respectHolidays" ' + (respectHolidays ? 'checked' : '') + ' onchange="toggleRespectHolidays()"> 遵守法定节假日</label>';
+  html += '<button class="btn btn-outline btn-sm" onclick="generateConstructionSchedule()">🔄 生成施工计划</button>';
+  html += '<button class="btn btn-primary btn-sm" onclick="saveConstructionData()">💾 保存</button>';
+  html += '<button class="btn btn-ghost btn-sm" onclick="showView(\'quotation\')">← 返回报价</button>';
+  html += '</div></div>';
+  
+  // 两栏布局
+  html += '<div class="construction-layout">';
+  
+  // 左侧：施工人员管理
+  html += '<div class="construction-left">';
+  html += '<div class="card"><div class="card-header"><h3>👥 施工人员管理</h3><button class="btn btn-primary btn-sm" onclick="openWorkerEditor()">+ 添加工人</button></div>';
+  html += '<div class="card-body">';
+  
+  if (workers.length === 0) {
+    html += '<div class="empty-state"><div class="icon">👷</div><p>暂无施工人员信息</p><p style="font-size:12px;color:var(--text-dim)">点击上方按钮添加工人信息</p></div>';
+  } else {
+    html += '<table class="workers-table"><thead><tr><th>工种</th><th>姓名</th><th>联系方式</th><th>计价方式</th><th>人数</th><th>操作</th></tr></thead><tbody>';
+    workers.forEach(function(w, i) {
+      html += '<tr data-worker-id="' + w.id + '">';
+      html += '<td>' + esc(w.type || '') + '</td>';
+      html += '<td>' + esc(w.name || '') + '</td>';
+      html += '<td>' + esc(w.phone || '') + '</td>';
+      html += '<td>' + esc(w.pricing || '') + '</td>';
+      html += '<td>' + (w.count || 1) + '</td>';
+      html += '<td><button class="btn btn-outline btn-sm" onclick="editWorker(\'' + w.id + '\')">编辑</button> ';
+      html += '<button class="btn btn-danger btn-sm" onclick="deleteWorker(\'' + w.id + '\')">删除</button></td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+  }
+  
+  html += '</div></div>'; // card-body and card
+  
+  // 工种统计
+  var typeStats = {};
+  workers.forEach(function(w) {
+    var type = w.type || '其他';
+    typeStats[type] = (typeStats[type] || 0) + (w.count || 1);
+  });
+  
+  html += '<div class="card"><div class="card-header"><h3>📊 工种统计</h3></div><div class="card-body">';
+  if (Object.keys(typeStats).length === 0) {
+    html += '<div style="text-align:center;padding:12px;color:var(--text-dim);font-size:12px">暂无工种数据</div>';
+  } else {
+    html += '<div style="display:flex;flex-wrap:wrap;gap:8px">';
+    Object.keys(typeStats).forEach(function(type) {
+      html += '<div class="worker-type-tag"><span class="worker-type-name">' + esc(type) + '</span><span class="worker-type-count">' + typeStats[type] + '人</span></div>';
+    });
+    html += '</div>';
+  }
+  html += '</div></div>';
+  
+  html += '</div>'; // construction-left
+  
+  // 右侧：施工进度甘特图
+  html += '<div class="construction-right">';
+  html += '<div class="card"><div class="card-header"><h3>📅 施工进度计划</h3><div style="display:flex;gap:6px"><button class="btn btn-outline btn-sm" onclick="addScheduleItem()">+ 添加任务</button><button class="btn btn-outline btn-sm" onclick="autoArrangeSchedule()">🔧 自动排期</button></div></div>';
+  html += '<div class="card-body">';
+  
+  if (schedule.length === 0) {
+    html += '<div class="empty-state"><div class="icon">📅</div><p>暂无施工进度计划</p><p style="font-size:12px;color:var(--text-dim)">点击"生成施工计划"基于报价自动生成，或手动添加任务</p></div>';
+  } else {
+    // 甘特图容器
+    html += '<div id="ganttContainer" style="overflow-x:auto;max-width:100%">';
+    html += '<table class="gantt-table" id="ganttTable">';
+    html += '<thead><tr><th style="width:180px">施工任务</th><th style="width:100px">工种</th><th style="width:80px">工期(天)</th><th style="width:120px">开始日期</th><th style="width:120px">结束日期</th><th style="width:150px">施工人员</th><th style="width:60px">状态</th><th style="width:80px">操作</th></tr></thead>';
+    html += '<tbody id="ganttBody">';
+    
+    schedule.forEach(function(task, index) {
+      var startDate = task.startDate ? new Date(task.startDate).toISOString().split('T')[0] : '';
+      var endDate = task.endDate ? new Date(task.endDate).toISOString().split('T')[0] : '';
+      var duration = task.duration || 1;
+      var statusColors = {pending:'var(--text-dim)',in_progress:'var(--warning)',completed:'var(--success)'};
+      var statusText = {pending:'未开始',in_progress:'进行中',completed:'已完成'};
+      var status = task.status || 'pending';
+      
+      html += '<tr data-task-id="' + task.id + '" draggable="true" ondragstart="dragScheduleItem(event)" ondragover="allowDrop(event)" ondrop="dropScheduleItem(event)">';
+      html += '<td><div style="display:flex;align-items:center;gap:4px"><span style="cursor:move">↕️</span><input type="text" value="' + esc(task.name || '') + '" style="width:100%;border:none;background:none;padding:2px 4px" onchange="updateTaskField(\'' + task.id + '\', \'name\', this.value)"></div></td>';
+      html += '<td><select style="width:100%;padding:2px 4px;border:1px solid var(--border)" onchange="updateTaskField(\'' + task.id + '\', \'workerType\', this.value)">';
+      html += '<option value="">选择工种</option>';
+      Object.keys(typeStats).forEach(function(type) {
+        html += '<option value="' + esc(type) + '" ' + (task.workerType === type ? 'selected' : '') + '>' + esc(type) + '</option>';
+      });
+      html += '</select></td>';
+      html += '<td><div style="display:flex;align-items:center;gap:4px"><input type="number" value="' + duration + '" min="1" max="30" style="width:50px;padding:2px 4px;border:1px solid var(--border)" onchange="updateTaskDuration(\'' + task.id + '\', this.value)">天</div></td>';
+      html += '<td><input type="date" value="' + startDate + '" style="width:100%;padding:2px 4px;border:1px solid var(--border)" onchange="updateTaskDate(\'' + task.id + '\', \'startDate\', this.value)"></td>';
+      html += '<td><input type="date" value="' + endDate + '" style="width:100%;padding:2px 4px;border:1px solid var(--border)" onchange="updateTaskDate(\'' + task.id + '\', \'endDate\', this.value)"></td>';
+      html += '<td><select style="width:100%;padding:2px 4px;border:1px solid var(--border)" onchange="updateTaskField(\'' + task.id + '\', \'workerId\', this.value)">';
+      html += '<option value="">选择工人</option>';
+      workers.filter(function(w) { return !task.workerType || w.type === task.workerType; }).forEach(function(w) {
+        html += '<option value="' + w.id + '" ' + (task.workerId === w.id ? 'selected' : '') + '>' + esc(w.name) + ' (' + (w.type || '') + ')</option>';
+      });
+      html += '</select></td>';
+      html += '<td><select style="width:100%;padding:2px 4px;border:1px solid var(--border);color:' + (statusColors[status] || 'var(--text)') + '" onchange="updateTaskField(\'' + task.id + '\', \'status\', this.value)">';
+      html += '<option value="pending" ' + (status === 'pending' ? 'selected' : '') + '>未开始</option>';
+      html += '<option value="in_progress" ' + (status === 'in_progress' ? 'selected' : '') + '>进行中</option>';
+      html += '<option value="completed" ' + (status === 'completed' ? 'selected' : '') + '>已完成</option>';
+      html += '</select></td>';
+      html += '<td><button class="btn btn-outline btn-sm" onclick="moveTaskUp(\'' + task.id + '\')">↑</button> <button class="btn btn-outline btn-sm" onclick="moveTaskDown(\'' + task.id + '\')">↓</button></td>';
+      html += '</tr>';
+    });
+    
+    html += '</tbody></table></div>';
+    
+    // 甘特图时间轴
+    html += '<div style="margin-top:20px"><h4 style="font-size:13px;margin-bottom:8px">📊 甘特图时间轴</h4>';
+    html += '<div id="ganttTimeline" style="height:60px;background:var(--bg-light);border-radius:4px;position:relative;margin-top:8px;overflow-x:auto;padding:8px"></div></div>';
+  }
+  
+  html += '</div></div>'; // card-body and card
+  
+  // 进度统计
+  var totalTasks = schedule.length;
+  var completedTasks = schedule.filter(function(t) { return t.status === 'completed'; }).length;
+  var progress = totalTasks > 0 ? Math.round(completedTasks / totalTasks * 100) : 0;
+  
+  html += '<div class="card"><div class="card-header"><h3>📈 进度统计</h3></div><div class="card-body">';
+  html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">';
+  html += '<div style="text-align:center"><div style="font-size:11px;color:var(--text-dim)">总任务数</div><div style="font-size:20px;font-weight:700">' + totalTasks + '</div></div>';
+  html += '<div style="text-align:center"><div style="font-size:11px;color:var(--text-dim)">完成率</div><div style="font-size:20px;font-weight:700;color:' + (progress >= 80 ? 'var(--success)' : progress >= 50 ? 'var(--warning)' : 'var(--danger)') + '">' + progress + '%</div></div>';
+  html += '<div style="text-align:center"><div style="font-size:11px;color:var(--text-dim)">预计总工期</div><div style="font-size:20px;font-weight:700">' + schedule.reduce(function(sum, t) { return sum + (t.duration || 1); }, 0) + '天</div></div>';
+  html += '</div>';
+  html += '<div style="margin-top:12px"><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px"><span>整体进度</span><span>' + completedTasks + '/' + totalTasks + '</span></div>';
+  html += '<div class="progress-bar"><div class="progress-fill" style="width:' + progress + '%;background:' + (progress >= 80 ? 'var(--success)' : progress >= 50 ? 'var(--warning)' : 'var(--accent)') + '"></div></div></div>';
+  html += '</div></div>';
+  
+  html += '</div>'; // construction-right
+  
+  html += '</div>'; // construction-layout
+  html += '</div>'; // construction-container
+  
+  el.innerHTML = html;
+  
+  // 渲染甘特图时间轴
+  if (schedule.length > 0) {
+    renderGanttTimeline();
+  }
+}
+
+function toggleRespectHolidays() {
+  S.respectHolidays = document.getElementById('respectHolidays').checked;
+  markDirty();
+  if (S.constructionSchedule.length > 0) {
+    recalculateScheduleDates();
+  }
+}
+
+function generateConstructionSchedule() {
+  // 基于当前报价自动生成施工计划
+  pushUndoState();
+  
+  // 默认施工任务模板
+  var defaultTasks = [
+    { name: '拆除工程', workerType: '拆除工', duration: 2 },
+    { name: '水电改造', workerType: '水电工', duration: 5 },
+    { name: '防水工程', workerType: '防水工', duration: 3 },
+    { name: '瓦工铺贴', workerType: '瓦工', duration: 7 },
+    { name: '木工制作', workerType: '木工', duration: 6 },
+    { name: '油漆工程', workerType: '油漆工', duration: 8 },
+    { name: '安装工程', workerType: '安装工', duration: 4 },
+    { name: '保洁收尾', workerType: '保洁工', duration: 2 }
+  ];
+  
+  var startDate = new Date();
+  startDate.setDate(startDate.getDate() + 1); // 从明天开始
+  var startDateStr = startDate.toISOString().split('T')[0];
+  
+  // 如果第一个开始日期是节假日，向后移动
+  if (S.respectHolidays !== false) {
+    while (isHoliday(startDateStr)) {
+      startDate.setDate(startDate.getDate() + 1);
+      startDateStr = startDate.toISOString().split('T')[0];
+    }
+  }
+  
+  var schedule = [];
+  defaultTasks.forEach(function(task, i) {
+    var taskStart = startDateStr;
+    var taskEnd = addBusinessDays(taskStart, task.duration);
+    
+    schedule.push({
+      id: uid(),
+      name: task.name,
+      workerType: task.workerType,
+      duration: task.duration,
+      startDate: taskStart,
+      endDate: taskEnd,
+      status: 'pending',
+      order: i
+    });
+    
+    // 下一个任务从当前任务结束后开始
+    startDateStr = addBusinessDays(taskEnd, 1);
+  });
+  
+  S.constructionSchedule = schedule;
+  // 重新计算以确保一致性
+  recalculateScheduleDates();
+  showToast('已生成默认施工计划（考虑节假日）');
+}
+
+function saveConstructionData() {
+  pushUndoState();
+  // 状态已自动更新，只需标记脏数据
+  markDirty();
+  showToast('施工数据已保存');
+}
+
+function openWorkerEditor(workerId) {
+  var worker = workerId ? S.workers.find(function(w) { return w.id === workerId; }) : null;
+  document.getElementById('workerEditorTitle').textContent = worker ? '编辑工人信息' : '添加工人信息';
+  
+  var html = '<div class="form-grid">';
+  html += '<div class="form-group"><label>工种</label><input id="workerType" value="' + (worker ? esc(worker.type || '') : '') + '" placeholder="如：水电工、瓦工"></div>';
+  html += '<div class="form-group"><label>姓名</label><input id="workerName" value="' + (worker ? esc(worker.name || '') : '') + '"></div>';
+  html += '<div class="form-group"><label>联系方式</label><input id="workerPhone" value="' + (worker ? esc(worker.phone || '') : '') + '"></div>';
+  html += '<div class="form-group"><label>人数</label><input type="number" id="workerCount" value="' + (worker ? (worker.count || 1) : 1) + '" min="1" max="10"></div>';
+  html += '<div class="form-group full"><label>收费计价方式</label><input id="workerPricing" value="' + (worker ? esc(worker.pricing || '') : '') + '" placeholder="如：按天计费、按平方计费、包工"></div>';
+  html += '<div class="form-group full"><label>备注</label><textarea id="workerNotes" style="height:60px" placeholder="技能等级、工作经验等">' + (worker ? esc(worker.notes || '') : '') + '</textarea></div>';
+  html += '</div>';
+  
+  document.getElementById('workerEditorBody').innerHTML = html;
+  document.getElementById('workerEditorSave').onclick = function() { saveWorker(workerId); };
+  openModal('workerEditorModal');
+}
+
+function saveWorker(workerId) {
+  var type = document.getElementById('workerType').value.trim();
+  var name = document.getElementById('workerName').value.trim();
+  var phone = document.getElementById('workerPhone').value.trim();
+  var count = parseInt(document.getElementById('workerCount').value) || 1;
+  var pricing = document.getElementById('workerPricing').value.trim();
+  var notes = document.getElementById('workerNotes').value.trim();
+  
+  if (!type || !name) {
+    showToast('请填写工种和姓名');
+    return;
+  }
+  
+  pushUndoState();
+  
+  if (workerId) {
+    // 编辑现有工人
+    var idx = S.workers.findIndex(function(w) { return w.id === workerId; });
+    if (idx >= 0) {
+      S.workers[idx] = {
+        id: workerId,
+        type: type,
+        name: name,
+        phone: phone,
+        count: count,
+        pricing: pricing,
+        notes: notes
+      };
+    }
+  } else {
+    // 添加新工人
+    S.workers.push({
+      id: uid(),
+      type: type,
+      name: name,
+      phone: phone,
+      count: count,
+      pricing: pricing,
+      notes: notes
+    });
+  }
+  
+  closeModal('workerEditorModal');
+  renderConstructionView();
+  showToast('工人信息已保存');
+}
+
+function editWorker(id) {
+  openWorkerEditor(id);
+}
+
+function deleteWorker(id) {
+  if (!confirm('确定删除该工人信息？')) return;
+  pushUndoState();
+  S.workers = S.workers.filter(function(w) { return w.id !== id; });
+  renderConstructionView();
+  showToast('工人信息已删除');
+}
+
+function addScheduleItem() {
+  pushUndoState();
+  
+  // 确定开始日期：如果没有任务，从明天开始；否则从最后一个任务结束后开始
+  var startDate = new Date();
+  startDate.setDate(startDate.getDate() + 1);
+  var startDateStr = startDate.toISOString().split('T')[0];
+  
+  if (S.constructionSchedule.length > 0) {
+    // 获取最后一个任务的结束日期
+    var lastTask = S.constructionSchedule[S.constructionSchedule.length - 1];
+    if (lastTask.endDate) {
+      startDateStr = addBusinessDays(lastTask.endDate, 1);
+    }
+  }
+  
+  // 确保开始日期不是节假日
+  if (S.respectHolidays !== false) {
+    while (isHoliday(startDateStr)) {
+      var date = new Date(startDateStr);
+      date.setDate(date.getDate() + 1);
+      startDateStr = date.toISOString().split('T')[0];
+    }
+  }
+  
+  var endDateStr = addBusinessDays(startDateStr, 3); // 默认3天
+  
+  S.constructionSchedule.push({
+    id: uid(),
+    name: '新任务',
+    workerType: '',
+    duration: 3,
+    startDate: startDateStr,
+    endDate: endDateStr,
+    status: 'pending',
+    order: S.constructionSchedule.length
+  });
+  
+  // 重新计算日期（确保不重叠）
+  recalculateScheduleDates();
+}
+
+function updateTaskField(taskId, field, value) {
+  pushUndoState();
+  var task = S.constructionSchedule.find(function(t) { return t.id === taskId; });
+  if (task) {
+    task[field] = value;
+    if (field === 'workerType') {
+      // 清空已选择的工人，因为工种变了
+      task.workerId = '';
+    }
+    markDirty();
+  }
+}
+
+function updateTaskDuration(taskId, duration) {
+  duration = parseInt(duration) || 1;
+  if (duration < 1) duration = 1;
+  if (duration > 30) duration = 30;
+  
+  pushUndoState();
+  var task = S.constructionSchedule.find(function(t) { return t.id === taskId; });
+  if (task) {
+    task.duration = duration;
+    // 重新计算整个计划（考虑节假日和任务依赖）
+    recalculateScheduleDates();
+    markDirty();
+  }
+}
+
+function updateTaskDate(taskId, field, dateValue) {
+  pushUndoState();
+  var task = S.constructionSchedule.find(function(t) { return t.id === taskId; });
+  if (task) {
+    task[field] = dateValue;
+    
+    // 更新相关日期，考虑节假日
+    if (field === 'startDate' && dateValue) {
+      // 确保开始日期不是节假日
+      if (S.respectHolidays !== false) {
+        var startStr = dateValue;
+        while (isHoliday(startStr)) {
+          var date = new Date(startStr);
+          date.setDate(date.getDate() + 1);
+          startStr = date.toISOString().split('T')[0];
+        }
+        task.startDate = startStr;
+      }
+      // 使用节假日计算结束日期
+      task.endDate = addBusinessDays(task.startDate, task.duration || 1);
+    } else if (field === 'endDate' && dateValue && task.startDate) {
+      // 计算持续时间，考虑节假日
+      var start = new Date(task.startDate);
+      var end = new Date(dateValue);
+      // 计算实际工作日天数
+      var days = 0;
+      var current = new Date(start);
+      while (current <= end) {
+        var currentStr = current.toISOString().split('T')[0];
+        if (!isHoliday(currentStr)) {
+          days++;
+        }
+        current.setDate(current.getDate() + 1);
+      }
+      if (days > 0) task.duration = days;
+      task.endDate = dateValue;
+    }
+    
+    // 重新计算整个计划以确保任务不重叠
+    recalculateScheduleDates();
+    markDirty();
+  }
+}
+
+function moveTaskUp(taskId) {
+  var idx = S.constructionSchedule.findIndex(function(t) { return t.id === taskId; });
+  if (idx <= 0) return;
+  
+  pushUndoState();
+  var temp = S.constructionSchedule[idx];
+  S.constructionSchedule[idx] = S.constructionSchedule[idx-1];
+  S.constructionSchedule[idx-1] = temp;
+  // 重新计算日期，因为顺序已改变
+  recalculateScheduleDates();
+}
+
+function moveTaskDown(taskId) {
+  var idx = S.constructionSchedule.findIndex(function(t) { return t.id === taskId; });
+  if (idx < 0 || idx >= S.constructionSchedule.length - 1) return;
+  
+  pushUndoState();
+  var temp = S.constructionSchedule[idx];
+  S.constructionSchedule[idx] = S.constructionSchedule[idx+1];
+  S.constructionSchedule[idx+1] = temp;
+  // 重新计算日期，因为顺序已改变
+  recalculateScheduleDates();
+}
+
+function dragScheduleItem(e) {
+  e.dataTransfer.setData('text/plain', e.target.closest('tr').dataset.taskId);
+}
+
+function allowDrop(e) {
+  e.preventDefault();
+}
+
+function dropScheduleItem(e) {
+  e.preventDefault();
+  var draggedId = e.dataTransfer.getData('text/plain');
+  var targetRow = e.target.closest('tr');
+  if (!targetRow || !draggedId) return;
+  
+  var targetId = targetRow.dataset.taskId;
+  if (!targetId || draggedId === targetId) return;
+  
+  var draggedIdx = S.constructionSchedule.findIndex(function(t) { return t.id === draggedId; });
+  var targetIdx = S.constructionSchedule.findIndex(function(t) { return t.id === targetId; });
+  if (draggedIdx < 0 || targetIdx < 0) return;
+  
+  pushUndoState();
+  var draggedItem = S.constructionSchedule[draggedIdx];
+  S.constructionSchedule.splice(draggedIdx, 1);
+  S.constructionSchedule.splice(targetIdx, 0, draggedItem);
+  // 重新计算日期，因为顺序已改变
+  recalculateScheduleDates();
+}
+
+function autoArrangeSchedule() {
+  if (S.constructionSchedule.length === 0) return;
+  
+  pushUndoState();
+  
+  // 按照当前顺序重新安排日期，考虑节假日
+  var startDate = new Date();
+  startDate.setDate(startDate.getDate() + 1);
+  var startDateStr = startDate.toISOString().split('T')[0];
+  
+  // 如果第一个开始日期是节假日，向后移动
+  while (isHoliday(startDateStr) && S.respectHolidays !== false) {
+    startDate.setDate(startDate.getDate() + 1);
+    startDateStr = startDate.toISOString().split('T')[0];
+  }
+  
+  S.constructionSchedule.forEach(function(task, i) {
+    task.startDate = startDateStr;
+    var endDateStr = addBusinessDays(startDateStr, task.duration || 1);
+    task.endDate = endDateStr;
+    
+    // 下一个任务从上一个任务结束后开始
+    startDateStr = addBusinessDays(endDateStr, 1);
+  });
+  
+  renderConstructionView();
+  showToast('已自动重新排期（考虑节假日）');
+}
+
+function recalculateScheduleDates() {
+  if (!S.constructionSchedule || S.constructionSchedule.length === 0) return;
+  
+  pushUndoState();
+  
+  var prevEndDate = null;
+  S.constructionSchedule.forEach(function(task, i) {
+    // 如果任务没有开始日期，设置为明天
+    if (!task.startDate) {
+      var startDate = new Date();
+      startDate.setDate(startDate.getDate() + 1);
+      task.startDate = startDate.toISOString().split('T')[0];
+    }
+    
+    // 确保开始日期不是节假日
+    if (S.respectHolidays !== false) {
+      var startStr = task.startDate;
+      while (isHoliday(startStr)) {
+        var date = new Date(startStr);
+        date.setDate(date.getDate() + 1);
+        startStr = date.toISOString().split('T')[0];
+      }
+      task.startDate = startStr;
+    }
+    
+    // 计算结束日期，考虑节假日
+    task.endDate = addBusinessDays(task.startDate, task.duration || 1);
+    
+    // 确保任务不重叠（如果前一个任务存在）
+    if (prevEndDate && task.startDate < prevEndDate) {
+      task.startDate = addBusinessDays(prevEndDate, 1);
+      task.endDate = addBusinessDays(task.startDate, task.duration || 1);
+    }
+    
+    prevEndDate = task.endDate;
+  });
+  
+  renderConstructionView();
+}
+
+function renderGanttTimeline() {
+  var container = document.getElementById('ganttTimeline');
+  if (!container) return;
+  
+  // 简化版时间轴渲染
+  container.innerHTML = '<div style="white-space:nowrap;padding:4px 8px;font-size:11px;color:var(--text-light)">甘特图时间轴（简化显示）</div>';
+}
+
 function showDashboard(){
   checkDirty(function(){S.bossAuthenticated=false;renderDashboard();showView('dashboard')});
 }
@@ -120,15 +838,36 @@ function renderDashboard(){
 
 // ==================== BOSS DASHBOARD ====================
 function openBossLogin(){
-  checkDirty(function(){S.bossAuthenticated=false;
-  document.getElementById('bossPwdBody').innerHTML='<div class="boss-pwd-wrap"><div class="lock-icon">🔐</div><p style="font-size:13px;color:var(--text-light);margin-bottom:16px">请输入管理密码</p><input type="password" id="bossPwdInput" placeholder="····" onkeydown="if(event.key===\'Enter\')checkBossPwd()"><div style="margin-top:14px;display:flex;gap:8px;justify-content:center"><button class="btn btn-primary" onclick="checkBossPwd()">确认</button><button class="btn btn-outline" onclick="closeModal(\'bossPwdModal\')">取消</button></div><div class="boss-pwd-hint">初始密码: 888888</div></div>';
-  openModal('bossPwdModal');setTimeout(function(){var inp=document.getElementById('bossPwdInput');if(inp)inp.focus()},100)});
+  console.log('openBossLogin called');
+  checkDirty(function(){
+    console.log('checkDirty callback executing');
+    S.bossAuthenticated=false;
+    document.getElementById('bossPwdBody').innerHTML='<div class="boss-pwd-wrap"><div class="lock-icon">🔐</div><p style="font-size:13px;color:var(--text-light);margin-bottom:16px">请输入管理密码</p><input type="password" id="bossPwdInput" placeholder="····" onkeydown="if(event.key===\'Enter\')checkBossPwd()"><div style="margin-top:14px;display:flex;gap:8px;justify-content:center"><button class="btn btn-primary" onclick="checkBossPwd()">确认</button><button class="btn btn-outline" onclick="closeModal(\'bossPwdModal\')">取消</button></div><div class="boss-pwd-hint">初始密码: 888888</div></div>';
+    console.log('Opening bossPwdModal');
+    openModal('bossPwdModal');
+    setTimeout(function(){var inp=document.getElementById('bossPwdInput');if(inp)inp.focus()},100);
+  });
 }
 function checkBossPwd(){
-  var pwd=document.getElementById('bossPwdInput').value;if(pwd===S.bossPassword){S.bossAuthenticated=true;closeModal('bossPwdModal');renderBossView();showView('boss')}else{showToast('密码错误')}
+  console.log('checkBossPwd called');
+  var pwd=document.getElementById('bossPwdInput').value;
+  console.log('Password entered:', pwd ? '***' : 'empty');
+  if(pwd===S.bossPassword){
+    console.log('Password correct');
+    S.bossAuthenticated=true;
+    closeModal('bossPwdModal');
+    console.log('Rendering boss view');
+    renderBossView();
+    showView('boss');
+  }else{
+    console.log('Password incorrect');
+    showToast('密码错误');
+  }
 }
 function renderBossView(){
+  console.log('renderBossView called');
   var quoteFiles=S.files.filter(function(f){return f.type==='quotation'});
+  console.log('Found quote files:', quoteFiles.length);
   var totalRevenue=0;var totalCost=0;var rate=S.costRates[S.currentPlan]||0.65;
   var catCosts={};
   var allStats=[];
@@ -148,12 +887,29 @@ function renderBossView(){
     '<div class="boss-config"><h4>⚙️ 成本率设置</h4><div class="boss-config-grid"><div class="boss-config-item"><label>奢享全案成本率</label><input type="number" id="bossRateLuxury" value="'+(S.costRates.luxury*100)+'" min="0" max="100" step="1" onchange="updateBossRate()">%</div><div class="boss-config-item"><label>优享精造成本率</label><input type="number" id="bossRatePremium" value="'+(S.costRates.premium*100)+'" min="0" max="100" step="1" onchange="updateBossRate()">%</div><div class="boss-config-item"><label>修改密码</label><input type="password" id="bossNewPwd" placeholder="新密码" style="width:100%"></div><div style="margin-top:8px;display:flex;gap:6px"><button class="btn btn-primary btn-sm" onclick="saveBossConfig()">保存设置</button></div></div></div>'+
     '<div class="boss-config" style="margin-top:14px"><h4>🌐 AI接口设置</h4><div class="ai-settings"><div class="form-group"><label>AI 提供商</label><select id="aiProvider" onchange="onAiProviderChange()"><option value="ollama"'+(S.aiProvider==='ollama'?' selected':'')+'>Ollama (本地)</option><option value="deepseek"'+(S.aiProvider==='deepseek'?' selected':'')+'>DeepSeek</option><option value="openai"'+(S.aiProvider==='openai'?' selected':'')+'>OpenAI 兼容</option><option value="zhipu"'+(S.aiProvider==='zhipu'?' selected':'')+'>智谱 GLM</option><option value="doubao"'+(S.aiProvider==='doubao'?' selected':'')+'>豆包 (火山方舟)</option></select></div><div class="form-group"><label>API 地址</label><input id="aiApiUrl" value="'+esc(S.aiApiUrl||'https://api.deepseek.com')+'"></div><div class="form-group"><label>API Key</label><input id="aiApiKey" type="password" value="'+esc(S.aiApiKey||'')+'" placeholder="sk-..."></div><div class="form-group"><label>模型名称</label><input id="aiModel" value="'+esc(S.ollamaModel||'')+'" placeholder="如 deepseek-chat、qwen2.5、glm-4-flash 等"></div></div><div style="margin-top:8px;display:flex;gap:6px"><button class="btn btn-primary btn-sm" onclick="saveAiApiConfig()">保存接口设置</button><button class="btn btn-outline btn-sm" onclick="testAiConnection()">测试连接</button></div></div>'+
     '<div class="boss-config" style="margin-top:14px"><h4>🤖 AI优化提示词设置</h4><div class="boss-config-grid" style="grid-template-columns:1fr"><div class="boss-config-item" style="grid-column:1/-1"><label>施工明细优化提示词</label><textarea id="bossAiConstructionPrompt" rows="4" style="width:100%;min-height:80px;padding:8px;border:1px solid var(--border-strong);border-radius:6px;background:var(--input-bg);color:var(--text);font-size:12px;resize:vertical;font-family:var(--font-family)">'+esc(S.aiOptimizeConstructionPrompt||'')+'</textarea></div><div class="boss-config-item" style="grid-column:1/-1"><label>产品说明优化提示词</label><textarea id="bossAiProductPrompt" rows="4" style="width:100%;min-height:80px;padding:8px;border:1px solid var(--border-strong);border-radius:6px;background:var(--input-bg);color:var(--text);font-size:12px;resize:vertical;font-family:var(--font-family)">'+esc(S.aiOptimizeProductPrompt||'')+'</textarea></div></div><div style="margin-top:8px;display:flex;gap:6px"><button class="btn btn-primary btn-sm" onclick="saveAiPromptConfig()">保存提示词</button><button class="btn btn-outline btn-sm" onclick="resetAiPromptConfig()">恢复默认</button></div></div>'+
+    '<div class="boss-config" style="margin-top:14px"><h4>🎨 报价明细样式设置</h4><div class="boss-config-grid" style="grid-template-columns:repeat(5,1fr)"><div class="boss-config-item"><label>表格字体(px)</label><input type="number" id="styleTableFont" value="'+(S.fontSizes.table||12)+'" min="8" max="24" step="1"></div><div class="boss-config-item"><label>表头字体(px)</label><input type="number" id="styleHeaderFont" value="'+(S.fontSizes.header||12)+'" min="8" max="24" step="1"></div><div class="boss-config-item"><label>项目字体(px)</label><input type="number" id="styleProjectFont" value="'+(S.fontSizes.project||14)+'" min="8" max="24" step="1"></div><div class="boss-config-item"><label>说明字体(px)</label><input type="number" id="styleDescFont" value="'+(S.fontSizes.description||11)+'" min="8" max="24" step="1"></div><div class="boss-config-item"><label>输入框字体(px)</label><input type="number" id="styleInputFont" value="'+(S.fontSizes.input||11)+'" min="8" max="24" step="1"></div></div><div class="boss-config-grid" style="grid-template-columns:repeat(5,1fr);margin-top:8px"><div class="boss-config-item"><label>行高(px)</label><input type="number" id="styleRowHeight" value="'+(S.rowHeight||36)+'" min="20" max="100" step="1"></div></div><div style="margin-top:8px;display:flex;gap:6px"><button class="btn btn-primary btn-sm" onclick="saveStyleConfig()">保存样式设置</button><button class="btn btn-outline btn-sm" onclick="applyQuoteTableStyles()">立即应用</button></div></div>'+
+    '<div class="boss-config" style="margin-top:14px"><h4>🏷️ 品牌设置</h4><div class="boss-config-grid" style="grid-template-columns:1fr 1fr"><div class="boss-config-item"><label>系统名称</label><input id="brandSystemName" value="'+esc(S.systemName||'斑马丨精装报价系统')+'" placeholder="如: 斑马丨精装报价系统"></div><div class="boss-config-item"><label>LOGO图片</label><div style="display:flex;gap:6px;align-items:center"><input id="brandLogoFile" type="file" accept="image/*" style="font-size:11px;flex:1" onchange="previewBrandLogo(event)"><button class="btn btn-outline btn-sm" onclick="resetBrandLogo()" style="font-size:10px;padding:2px 8px">重置</button></div></div></div><div style="margin-top:6px">'+(S.logo?'<img src="'+S.logo+'" style="height:32px;border-radius:6px;object-fit:contain">':'<span style="color:var(--text-dim);font-size:11px">未设置自定义LOGO，将使用默认LOGO</span>')+'</div><div style="margin-top:8px;display:flex;gap:6px"><button class="btn btn-primary btn-sm" onclick="saveBrandingConfig()">保存品牌设置</button></div></div>'+
     '<div class="dash-card"><div class="dash-card-header"><h3>报价利润明细</h3></div><div class="dash-card-body" style="max-height:350px;overflow-y:auto"><table class="dash-table"><thead><tr><th>文件名</th><th>房间</th><th>报价额</th><th>预估成本</th><th>毛利润</th><th>毛利率</th><th>日期</th></tr></thead><tbody>'+allStats.map(function(a){var marginColor=a.margin>=30?'var(--success)':a.margin>=20?'var(--warning)':'var(--danger)';return '<tr><td style="font-weight:500">'+esc(a.name)+'</td><td>'+a.rooms+'</td><td style="font-weight:600">¥'+fmt(a.revenue)+'</td><td>¥'+fmt(a.cost)+'</td><td style="color:var(--success);font-weight:600">¥'+fmt(a.profit)+'</td><td style="color:'+marginColor+';font-weight:700">'+a.margin.toFixed(1)+'%</td><td style="color:var(--text-dim)">'+formatDate(a.date)+'</td></tr>'}).join('')+'</tbody></table></div></div>'+
     '<div class="dash-card"><div class="dash-card-header"><h3>利润分析</h3></div><div class="dash-card-body"><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px"><div style="text-align:center"><div style="font-size:11px;color:var(--text-dim);margin-bottom:4px">平均毛利率</div><div style="font-size:22px;font-weight:700;color:'+(avgMargin>=30?'var(--success)':'var(--warning)')+'">'+avgMargin.toFixed(1)+'%</div></div><div style="text-align:center"><div style="font-size:11px;color:var(--text-dim);margin-bottom:4px">最高单笔利润</div><div style="font-size:22px;font-weight:700;color:var(--success)">¥'+fmt(allStats[0]?allStats[0].profit:0)+'</div></div><div style="text-align:center"><div style="font-size:11px;color:var(--text-dim);margin-bottom:4px">最低毛利率</div><div style="font-size:22px;font-weight:700;color:var(--danger)">'+(allStats.length?allStats[allStats.length-1].margin.toFixed(1):'0')+'%</div></div></div></div></div>';
 }
 function updateBossRate(){S.costRates.luxury=(parseFloat(document.getElementById('bossRateLuxury').value)||65)/100;S.costRates.premium=(parseFloat(document.getElementById('bossRatePremium').value)||60)/100;renderBossView()}
 function saveBossConfig(){updateBossRate();var newPwd=document.getElementById('bossNewPwd').value;if(newPwd&&newPwd.length>=4){S.bossPassword=newPwd;showToast('设置已保存，新密码已生效')}else if(newPwd&&newPwd.length>0){showToast('密码至少4位')}saveSettings();renderBossView();showToast('设置已保存')}
 function saveAiPromptConfig(){var cp=document.getElementById('bossAiConstructionPrompt');var pp=document.getElementById('bossAiProductPrompt');if(cp)S.aiOptimizeConstructionPrompt=cp.value.trim();if(pp)S.aiOptimizeProductPrompt=pp.value.trim();saveSettings();showToast('AI优化提示词已保存')}
+function saveStyleConfig(){
+  var fs=S.fontSizes;
+  fs.table=parseInt(document.getElementById('styleTableFont').value)||12;
+  fs.header=parseInt(document.getElementById('styleHeaderFont').value)||12;
+  fs.project=parseInt(document.getElementById('styleProjectFont').value)||14;
+  fs.description=parseInt(document.getElementById('styleDescFont').value)||11;
+  fs.input=parseInt(document.getElementById('styleInputFont').value)||11;
+  S.rowHeight=parseInt(document.getElementById('styleRowHeight').value)||36;
+  saveSettings();
+  applyQuoteTableStyles();
+  showToast('样式设置已保存')
+}
+function previewBrandLogo(e){var file=e.target.files[0];if(!file)return;compressImage(file,128,0.8,function(b64){S._pendingLogo=b64;var preview=e.target.parentElement.parentElement.parentElement.querySelector('img');if(preview){preview.src=b64}else{var container=e.target.parentElement.parentElement.parentElement.nextElementSibling;if(container)container.innerHTML='<img src="'+b64+'" style="height:32px;border-radius:6px;object-fit:contain">'}})}
+function resetBrandLogo(){S._pendingLogo='';S.logo='';var fileInput=document.getElementById('brandLogoFile');if(fileInput)fileInput.value='';saveBrandingToStorage();applyBranding();renderBossView();showToast('LOGO已重置为默认')}
+function saveBrandingConfig(){var nameEl=document.getElementById('brandSystemName');if(nameEl)S.systemName=nameEl.value.trim()||'斑马丨精装报价系统';if(S._pendingLogo!==undefined&&S._pendingLogo!==null){S.logo=S._pendingLogo;S._pendingLogo=null}saveBrandingToStorage();applyBranding();showToast('品牌设置已保存')}
 function resetAiPromptConfig(){S.aiOptimizeConstructionPrompt='你是一位资深室内装饰工艺专家。请优化以下施工明细说明，严格遵循室内装饰行业规范，仅标注核心专业信息，无营销冗余表述。施工明细明确施工工序、工艺标准、人工规范、隐蔽工程做法及验收节点。保持原有核心信息，补充缺失的专业参数，修正不规范的表述，使说明更加专业、完整、合规。直接输出优化后的施工明细，不要加前缀说明。';S.aiOptimizeProductPrompt='你是一位资深室内装饰材料专家。请优化以下产品说明，严格遵循室内装饰行业规范，仅标注核心专业信息，无营销冗余表述。材料明细标注主材/辅材品牌、型号、规格、环保等级（ENF/E0/E1级、无醛添加）、材质参数及国家环保检测标准；设备明细列明品牌、型号、功率、尺寸、安装规范与质保参数；软装明细标注材质、面料、填充物环保等级、尺寸及工艺标准。保持原有核心信息，补充缺失的专业参数，修正不规范的表述，使说明更加专业、完整、合规。直接输出优化后的产品说明，不要加前缀说明。';saveSettings();renderBossView();showToast('已恢复默认提示词')}
 function saveAiApiConfig(){var provider=document.getElementById('aiProvider').value;var apiUrl=document.getElementById('aiApiUrl').value.trim();var apiKey=document.getElementById('aiApiKey').value.trim();var model=document.getElementById('aiModel').value.trim();S.aiProvider=provider;S.aiApiUrl=apiUrl;S.aiApiKey=apiKey;S.ollamaModel=model;if(provider==='ollama')S.ollamaUrl=apiUrl;saveSettings();showToast('AI接口设置已保存')}
 function testAiConnection(){var provider=document.getElementById('aiProvider').value;var apiUrl=document.getElementById('aiApiUrl').value.trim();var apiKey=document.getElementById('aiApiKey').value.trim();var model=document.getElementById('aiModel').value.trim();if(!model){showToast('请先输入模型名称');return}showToast('正在测试连接...');var endpoint='';var fetchOpts={method:'POST',headers:{'Content-Type':'application/json'}};if(provider==='ollama'){endpoint=apiUrl+'/api/chat';fetchOpts.body=JSON.stringify({model:model,messages:[{role:'user',content:'你好'}],stream:false})}else{var chatPath=provider==='zhipu'?'/v4/chat/completions':provider==='doubao'?'/chat/completions':'/v1/chat/completions';endpoint=apiUrl.replace(/\/+$/,'')+chatPath;fetchOpts.headers['Authorization']='Bearer '+apiKey;fetchOpts.body=JSON.stringify({model:model,messages:[{role:'user',content:'你好'}],stream:false,temperature:0.3})}fetch(endpoint,fetchOpts).then(function(r){if(r.ok){showToast('✅ 连接成功！模型可用')}else{return r.text().then(function(t){throw new Error(r.status+' '+t)})}}).catch(function(e){showToast('❌ 连接失败: '+e.message)})}
@@ -161,7 +917,7 @@ function testAiConnection(){var provider=document.getElementById('aiProvider').v
 // ==================== PRODUCT DATABASE ====================
 function openProductDatabase(){S.pdbSelectedMainCat=null;S.pdbSelectedSubCat=null;S.editingProductId=null;renderProductDb();openModal('productDbModal')}
 function renderProductDb(){var body=document.getElementById('productDbBody');var tree='<div class="pdb-cat-tree"><div class="pdb-cat-item'+(S.pdbSelectedMainCat===null?' active':'')+'" onclick="pdbSelectCategory(null,null)">全部 ('+S.products.length+')</div>';PRODUCT_MAIN_CATEGORIES.forEach(function(mc){var count=S.products.filter(function(p){return p.mainCategory===mc.id}).length;tree+='<div class="pdb-cat-main">'+mc.icon+' '+mc.name+' ('+count+')</div><div class="pdb-sub-list">'+mc.subcategories.map(function(sc){var sc2=S.products.filter(function(p){return p.mainCategory===mc.id&&p.subCategory===sc.id}).length;return'<div class="pdb-sub-item'+(S.pdbSelectedMainCat===mc.id&&S.pdbSelectedSubCat===sc.id?' active':'')+'" onclick="pdbSelectCategory(\''+mc.id+'\',\''+sc.id+'\')">'+sc.name+' ('+sc2+')</div>'}).join('')+'</div>'});tree+='</div>';
-  var content='<div style="display:flex;flex-direction:column;gap:10px"><div class="pdb-toolbar"><input id="pdbSearch" placeholder="搜索产品..." oninput="renderProductGrid()" style="width:180px"><select id="pdbMainFilter" onchange="pdbMainFilterChange()"><option value="">全部分类</option>'+PRODUCT_MAIN_CATEGORIES.map(function(mc){return'<option value="'+mc.id+'"'+(S.pdbSelectedMainCat===mc.id?' selected':'')+'>'+mc.icon+' '+mc.name+'</option>'}).join('')+'</select><select id="pdbSubFilter" onchange="pdbSubFilterChange()"><option value="">全部子类</option>'+(S.pdbSelectedMainCat?PRODUCT_MAIN_CATEGORIES.find(function(c){return c.id===S.pdbSelectedMainCat}).subcategories.map(function(sc){return'<option value="'+sc.id+'"'+(S.pdbSelectedSubCat===sc.id?' selected':'')+'>'+sc.name+'</option>'}).join(''):'')+'</select><button class="btn btn-primary btn-sm" onclick="showProductForm()">+ 添加产品</button></div><div id="pdbQuickImportArea" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;padding:10px;background:var(--card);border-radius:8px;border:1px solid var(--border)"><span style="font-size:11px;font-weight:600;color:var(--text-dim);align-self:center">快速导入：</span><button class="btn btn-success btn-sm" onclick="importSummitTileProducts()" title="萨米特瓷砖/岩板 800×800等规格">🧱 萨米特瓷砖</button><button class="btn btn-info btn-sm" onclick="importLangjingSanitaryProducts()" title="浪鲸卫浴 马桶/花洒/浴室柜等">🚿 浪鲸卫浴</button><button class="btn btn-warning btn-sm" onclick="importKaienjiaCustomProducts()" title="凯恩佳美定制 衣柜/橱柜/榻榻米等">🛋️ 凯恩佳美定制</button><button class="btn btn-secondary btn-sm" onclick="importQiteliWallFabricProducts()" title="七特丽壁布 多系列可选">🎨 七特丽壁布</button><button class="btn btn-danger btn-sm" onclick="importSchneiderBullSwitchProducts()" title="施耐德/公牛开关插座">⚡ 开关插座</button><button class="btn btn-dark btn-sm" onclick="importSubmarineProducts()" title="潜水艇地漏/止逆阀">🔩 潜水艇地漏</button><button class="btn btn-warning btn-sm" onclick="importCountertopProducts()" title="橱柜台面 岩板/石英石">🪟 橱柜台面</button><button class="btn btn-success btn-sm" onclick="importYeelightSmartProducts()" title="易来智能家居设备">💡 易来智能</button><button class="btn btn-info btn-sm" onclick="importEquipmentProducts()" title="设备产品 新风/空调/地暖/净水等">⚙️ 设备产品</button><button class="btn btn-secondary btn-sm" onclick="importSoftFurnishingProducts()" title="软装产品 窗帘/地毯/家具/床品等">🛋️ 软装产品</button><button class="btn btn-outline btn-sm" onclick="hideQuickImportButtons()" title="隐藏快速导入按钮">✕ 隐藏</button></div><div id="pdbGridArea"></div></div>';
+  var content='<div style="display:flex;flex-direction:column;gap:10px"><div class="pdb-toolbar"><input id="pdbSearch" placeholder="搜索产品..." oninput="renderProductGrid()" style="width:180px"><select id="pdbMainFilter" onchange="pdbMainFilterChange()"><option value="">全部分类</option>'+PRODUCT_MAIN_CATEGORIES.map(function(mc){return'<option value="'+mc.id+'"'+(S.pdbSelectedMainCat===mc.id?' selected':'')+'>'+mc.icon+' '+mc.name+'</option>'}).join('')+'</select><select id="pdbSubFilter" onchange="pdbSubFilterChange()"><option value="">全部子类</option>'+(S.pdbSelectedMainCat?PRODUCT_MAIN_CATEGORIES.find(function(c){return c.id===S.pdbSelectedMainCat}).subcategories.map(function(sc){return'<option value="'+sc.id+'"'+(S.pdbSelectedSubCat===sc.id?' selected':'')+'>'+sc.name+'</option>'}).join(''):'')+'</select><button class="btn btn-primary btn-sm" onclick="showProductForm()">+ 添加产品</button><div class="export-dropdown"><button class="btn btn-info btn-sm" onclick="toggleImportMenu(event)">📥 导入产品 ▾</button><div class="export-menu" id="importMenu"><button class="export-menu-item" onclick="importSummitTileProducts()">🧱 萨米特瓷砖</button><button class="export-menu-item" onclick="importLangjingSanitaryProducts()">🚿 浪鲸卫浴</button><button class="export-menu-item" onclick="importKaienjiaCustomProducts()">🛋️ 凯恩佳美定制</button><button class="export-menu-item" onclick="importQiteliWallFabricProducts()">🎨 七特丽壁布</button><button class="export-menu-item" onclick="importSchneiderBullSwitchProducts()">⚡ 开关插座</button><button class="export-menu-item" onclick="importSubmarineProducts()">🔩 潜水艇地漏</button><button class="export-menu-item" onclick="importCountertopProducts()">🪟 橱柜台面</button><button class="export-menu-item" onclick="importYeelightSmartProducts()">💡 易来智能</button><button class="export-menu-item" onclick="importEquipmentProducts()">⚙️ 设备产品</button><button class="export-menu-item" onclick="importSoftFurnishingProducts()">🛋️ 软装产品</button><button class="export-menu-item" onclick="importEcommerceProducts()">🛒 京东产品数据</button></div></div></div><div id="pdbGridArea"></div></div>';
   body.innerHTML='<div class="pdb-layout">'+tree+content+'</div>';renderProductGrid()}
 function pdbSelectCategory(mc,sc){S.pdbSelectedMainCat=mc;S.pdbSelectedSubCat=sc;renderProductDb()}
 function pdbMainFilterChange(){S.pdbSelectedMainCat=document.getElementById('pdbMainFilter').value||null;S.pdbSelectedSubCat=null;renderProductDb()}
@@ -444,6 +1200,124 @@ function importSoftFurnishingProducts(){
   saveProductsToStorage();showToast('✅ 软装产品：已导入 '+added+' 个产品'+(skipped?'，跳过 '+skipped+' 个':''));renderProductDb();
 }
 
+function importEcommerceProducts(){
+  // 京东电商渠道产品数据 - 只包含京东指导价、参数信息
+  // 每个大品类包含3-5个京东主流品牌信息
+  var products = [
+    // ==================== 主材类 (main_material) ====================
+    // 瓷砖子类 - 京东品牌：东鹏、马可波罗、简一
+    {name:'东鹏瓷砖 600×1200',brand:'东鹏',model:'DP-6001200',specifications:'600×1200mm',material:'陶瓷',color:'大理石纹',unit:'㎡',unitPrice:195,origin:'广东',warranty:'两年',installationMethod:'薄贴法',description:'品牌:东鹏 | 型号:DP-6001200 | 规格:600×1200mm大板 | 材质:陶瓷砖，莫氏硬度≥7 | 环保:无辐射，符合GB6566 A类 | 安装:薄贴法+找平器 | 来源:京东自营',notes:'京东好评率98%，防滑系数R10',mainCategory:'main_material',subCategory:'pm_tiles'},
+    {name:'马可波罗瓷砖 800×800',brand:'马可波罗',model:'MKBL-800',specifications:'800×800mm',material:'陶瓷',color:'多种可选',unit:'㎡',unitPrice:160,origin:'广东',warranty:'两年',installationMethod:'薄贴法',description:'品牌:马可波罗 | 型号:MKBL-800 | 规格:800×800mm | 材质:陶瓷砖，吸水率≤0.5%(GB/T4100) | 环保:无辐射，符合GB6566 A类 | 安装:薄贴法，留缝1-2mm | 来源:京东官方旗舰店',notes:'京东官方旗舰店畅销款',mainCategory:'main_material',subCategory:'pm_tiles'},
+    {name:'简一大理石瓷砖 800×800',brand:'简一',model:'JY-800',specifications:'800×800mm',material:'大理石瓷砖',color:'卡拉拉白',unit:'㎡',unitPrice:350,origin:'广东',warranty:'五年',installationMethod:'薄贴法',description:'品牌:简一 | 型号:JY-800 | 规格:800×800mm | 材质:大理石瓷砖，仿天然大理石纹理 | 环保:无辐射，符合GB6566 A类 | 安装:密缝铺贴(留缝≤0.5mm) | 来源:京东旗舰店',notes:'京东高端大理石瓷砖代表品牌',mainCategory:'main_material',subCategory:'pm_tiles'},
+    
+    // 地板子类 - 京东品牌：大自然、圣象
+    {name:'大自然实木地板',brand:'大自然',model:'DZR-OAK',specifications:'910×125×18mm',material:'北美白橡木',color:'原木色',unit:'㎡',unitPrice:480,origin:'浙江',warranty:'二十年',installationMethod:'龙骨/胶粘',description:'品牌:大自然 | 型号:DZR-OAK | 规格:910×125×18mm | 材质:北美白橡木，含水率8%-12% | 环保:木器漆符合GB18581，甲醛释放量≤0.05mg/m³(E0级) | 安装:龙骨/胶粘 | 来源:京东自营',notes:'京东实木地板好评榜第一',mainCategory:'main_material',subCategory:'pm_flooring'},
+    {name:'圣象强化复合地板',brand:'圣象',model:'SX-AC5',specifications:'1210×166×12mm',material:'高密度纤维板',color:'橡木色/胡桃色',unit:'㎡',unitPrice:158,origin:'江苏',warranty:'十五年',installationMethod:'锁扣拼接',description:'品牌:圣象 | 型号:SX-AC5 | 规格:1210×166×12mm | 材质:高密度纤维板(HDF)，密度≥850kg/m³ | 环保:甲醛释放量≤0.025mg/m³(ENF级) | 安装:锁扣拼接，免胶安装 | 来源:京东官方旗舰店',notes:'京东地板类目销量领先',mainCategory:'main_material',subCategory:'pm_flooring'},
+    
+    // 洁具/卫浴子类 - 京东品牌：TOTO、恒洁、科勒
+    {name:'TOTO智能马桶盖',brand:'TOTO',model:'TCF345',specifications:'标准尺寸',material:'ABS+PP',color:'白色',unit:'套',unitPrice:2800,origin:'北京',warranty:'三年',installationMethod:'后装适配',description:'品牌:TOTO | 型号:TCF345 | 规格:标准尺寸适配大多数马桶 | 功能:座圈加热、温水冲洗、暖风烘干 | 安全:IPX4防水等级 | 安装:后装适配，替换原有马桶盖 | 来源:京东国际自营',notes:'京东智能马桶盖销量冠军',mainCategory:'main_material',subCategory:'pm_sanitary'},
+    {name:'恒洁虹吸式马桶',brand:'恒洁',model:'HC-1000',specifications:'305mm坑距',material:'陶瓷',color:'白色',unit:'套',unitPrice:1800,origin:'广东',warranty:'五年',installationMethod:'落地安装',description:'品牌:恒洁 | 型号:HC-1000 | 规格:305mm坑距 | 技术:超旋虹吸式，排污力强 | 节水:3.5L单档节水 | 安装:落地安装，配全套配件 | 来源:京东恒洁官方旗舰店',notes:'京东国货马桶销量第一',mainCategory:'main_material',subCategory:'pm_sanitary'},
+    {name:'科勒连体马桶',brand:'科勒',model:'K-3499',specifications:'305/400mm坑距',material:'陶瓷',color:'白色',unit:'套',unitPrice:3200,origin:'上海',warranty:'五年',installationMethod:'落地安装',description:'品牌:科勒 | 型号:K-3499 | 规格:305/400mm坑距 | 材质:高温烧制陶瓷，釉面厚度≥1.2mm | 节水:3/4.5L双档节水 | 安装:落地安装，配密封圈/角阀 | 来源:京东官方旗舰店',notes:'京东高端马桶销量领先',mainCategory:'main_material',subCategory:'pm_sanitary'},
+    
+    // 涂料子类 - 京东品牌：立邦、多乐士
+    {name:'立邦净味120',brand:'立邦',model:'LB-120',specifications:'15L/桶',material:'水性乳胶漆',color:'白色及调色',unit:'桶',unitPrice:580,origin:'上海',warranty:'五年',installationMethod:'滚涂/喷涂',description:'品牌:立邦 | 型号:LB-120 | 规格:15L/桶，覆盖率10-12㎡/L | 环保:净味技术，甲醛未检出 | 功能:防霉抗碱，耐擦洗≥30000次 | 施工:滚涂/喷涂 | 来源:京东立邦官方旗舰店',notes:'京东乳胶漆好评榜第一',mainCategory:'main_material',subCategory:'pm_paint'},
+    {name:'多乐士金装五合一',brand:'多乐士',model:'DLS-A895',specifications:'18L/桶',material:'水性乳胶漆',color:'白色及调色',unit:'桶',unitPrice:680,origin:'上海',warranty:'五年',installationMethod:'滚涂/喷涂',description:'品牌:多乐士 | 型号:DLS-A895 | 规格:18L/桶，覆盖率10-12㎡/L(两遍) | 环保:甲醛未检出，VOC≤2g/L | 功能:防霉、耐擦洗、抗碱 | 施工:滚涂/喷涂，建议兑水≤20% | 来源:京东官方旗舰店',notes:'京东乳胶漆销量领先',mainCategory:'main_material',subCategory:'pm_paint'},
+    
+    // 灯具子类 - 京东品牌：雷士、欧普
+    {name:'雷士筒射灯套装',brand:'雷士',model:'NS-3510',specifications:'7W×10个',material:'铝材+玻璃',color:'白色/黑色',unit:'套',unitPrice:450,origin:'广东',warranty:'三年',installationMethod:'嵌入式',description:'品牌:雷士 | 型号:NS-3510 | 规格:7W×10个，开孔75mm | 光效:RA≥90，色温4000K | 散热:一体化铝材散热 | 安装:嵌入式，需吊顶开孔 | 来源:京东雷士官方旗舰店',notes:'京东筒射灯套装销量冠军',mainCategory:'main_material',subCategory:'pm_lighting'},
+    {name:'欧普LED吸顶灯',brand:'欧普',model:'OP-A60',specifications:'60W',material:'铝材+亚克力',color:'白色',unit:'盏',unitPrice:280,origin:'广东',warranty:'三年',installationMethod:'吸顶安装',description:'品牌:欧普 | 型号:OP-A60 | 规格:60W，适合15-20㎡房间 | 光效:光通量6000lm，色温3000-6500K可调 | 智能:支持APP/遥控调光调色 | 安装:吸顶安装，配安装支架 | 来源:京东官方旗舰店',notes:'京东吸顶灯类目销量领先',mainCategory:'main_material',subCategory:'pm_lighting'},
+    
+    // ==================== 辅料类 (auxiliary) ====================
+    // 水泥/砂浆子类 - 京东品牌：海螺
+    {name:'海螺水泥PO42.5',brand:'海螺',model:'HL-PO42.5',specifications:'50kg/袋',material:'硅酸盐水泥',color:'灰色',unit:'袋',unitPrice:28,origin:'安徽',warranty:'-',installationMethod:'混合使用',description:'品牌:海螺 | 型号:HL-PO42.5 | 规格:50kg/袋 | 标号:PO42.5，28天抗压强度≥42.5MPa | 凝结时间:初凝≥45min，终凝≤600min | 施工:按比例与砂、水混合 | 来源:京东建材专营店',notes:'京东水泥销量第一，品牌知名度高',mainCategory:'auxiliary',subCategory:'pa_cement'},
+    
+    // 防水涂料子类 - 京东品牌：东方雨虹
+    {name:'东方雨虹防水涂料',brand:'东方雨虹',model:'YH-101',specifications:'18kg/桶',material:'聚合物水泥防水涂料',color:'灰色',unit:'桶',unitPrice:220,origin:'北京',warranty:'五年',installationMethod:'涂刷',description:'品牌:东方雨虹 | 型号:YH-101 | 规格:18kg/桶，施工面积10-12㎡/桶 | 类型:JS-II型，柔韧性好 | 防水:抗渗压力≥0.6MPa | 施工:涂刷两遍，厚度1.5-2mm | 来源:京东东方雨虹官方旗舰店',notes:'京东防水涂料销量冠军',mainCategory:'auxiliary',subCategory:'pa_waterproof'},
+    
+    // 电线子类 - 京东品牌：熊猫
+    {name:'熊猫电线BV2.5',brand:'熊猫',model:'XM-BV2.5',specifications:'100米/卷',material:'铜芯PVC绝缘',color:'红色/蓝色/黄色',unit:'卷',unitPrice:180,origin:'上海',warranty:'十年',installationMethod:'穿管敷设',description:'品牌:熊猫 | 型号:XM-BV2.5 | 规格:BV2.5mm²，100米/卷 | 导体:无氧铜，纯度≥99.99% | 绝缘:PVC，耐压450/750V | 标准:符合GB/T5023 | 来源:京东熊猫电线官方旗舰店',notes:'京东电线销量第一，品质可靠',mainCategory:'auxiliary',subCategory:'pa_wire'},
+    
+    // 密封胶子类 - 京东品牌：西卡
+    {name:'西卡防水密封胶',brand:'西卡',model:'SIKA-11FC',specifications:'300ml/支',material:'硅酮密封胶',color:'透明/白色',unit:'支',unitPrice:38,origin:'苏州',warranty:'五年',installationMethod:'胶枪施工',description:'品牌:西卡 | 型号:SIKA-11FC | 规格:300ml/支 | 类型:中性硅酮胶，防霉等级0级 | 适用:厨卫、门窗密封 | 施工:胶枪施工，表干时间30min | 来源:京东西卡官方旗舰店',notes:'京东密封胶销量冠军',mainCategory:'auxiliary',subCategory:'pa_sealant'},
+    
+    // ==================== 设备类 (equipment) ====================
+    // 新风系统子类 - 京东品牌：远大
+    {name:'远大新风净化机',brand:'远大',model:'SF-500',specifications:'500m³/h',material:'金属+滤网',color:'银色',unit:'套',unitPrice:9800,origin:'湖南',warranty:'三年',installationMethod:'壁挂/吊顶',description:'品牌:远大 | 型号:SF-500 | 规格:风量500m³/h，适用面积150-200㎡ | 功能:静电除尘，臭氧浓度≤0.01ppm | 过滤:静电除尘+HEPA过滤 | 安装:壁挂/吊顶可选 | 来源:京东远大官方旗舰店',notes:'京东新风净化机销量领先',mainCategory:'equipment',subCategory:'pe_fresh_air'},
+    
+    // 中央空调子类 - 京东品牌：格力、大金
+    {name:'格力中央空调GMV',brand:'格力',model:'GMV-H180',specifications:'一拖六',material:'金属+塑料',color:'白色',unit:'套',unitPrice:28000,origin:'珠海',warranty:'六年',installationMethod:'吊顶安装',description:'品牌:格力 | 型号:GMV-H180 | 规格:一拖六，适用面积150-180㎡ | 能效:IPLV(C)≥6.5，一级能效 | 技术:直流变频，智能除霜 | 安装:吊顶安装，需专业施工 | 来源:京东格力官方旗舰店',notes:'京东国产中央空调销量第一',mainCategory:'equipment',subCategory:'pe_central_ac'},
+    {name:'大金中央空调VRV',brand:'大金',model:'VRV-X7',specifications:'一拖五',material:'金属+塑料',color:'白色',unit:'套',unitPrice:35000,origin:'上海',warranty:'五年',installationMethod:'吊顶安装',description:'品牌:大金 | 型号:VRV-X7 | 规格:一拖五，适用面积120-150㎡ | 能效:IPLV(C)≥7.0，一级能效 | 技术:直流变频，3D气流 | 安装:吊顶安装，需专业施工 | 来源:京东官方旗舰店',notes:'京东高端中央空调销量领先',mainCategory:'equipment',subCategory:'pe_central_ac'},
+    
+    // 净水设备子类 - 京东品牌：AO史密斯
+    {name:'AO史密斯净水器',brand:'A.O.史密斯',model:'R1600XD2',specifications:'1.6L/min',material:'不锈钢+滤芯',color:'银色',unit:'套',unitPrice:3800,origin:'南京',warranty:'五年',installationMethod:'厨下安装',description:'品牌:A.O.史密斯 | 型号:R1600XD2 | 规格:流量1.6L/min，RO反渗透 | 滤芯:RO膜寿命3年，废水比2:1 | 智能:滤芯更换提醒，液晶显示 | 安装:厨下安装，需预留电源/排水 | 来源:京东A.O.史密斯官方旗舰店',notes:'京东RO反渗透净水器销量第一',mainCategory:'equipment',subCategory:'pe_water_purifier'},
+    
+    // 智能家居子类 - 京东品牌：华为
+    {name:'华为全屋智能',brand:'华为',model:'HW-AI',specifications:'主机+面板',material:'金属+玻璃',color:'灰色',unit:'套',unitPrice:25000,origin:'深圳',warranty:'三年',installationMethod:'有线+无线',description:'品牌:华为 | 型号:HW-AI | 规格:智能主机+10个智能面板 | 协议:PLC-IoT+WiFi6 | 平台:HarmonyOS，全场景联动 | 安装:需专业布线，华为授权服务商 | 来源:京东华为官方旗舰店',notes:'京东高端全屋智能解决方案',mainCategory:'equipment',subCategory:'pe_smart_home'},
+    
+    // ==================== 软装类 (soft_furnishing) ====================
+    // 家具子类 - 京东品牌：顾家、摩力克
+    {name:'顾家功能沙发',brand:'顾家',model:'GJ-508',specifications:'单人位',material:'头层牛皮+金属框架',color:'棕色/黑色',unit:'张',unitPrice:4800,origin:'浙江',warranty:'五年',installationMethod:'整装配送',description:'品牌:顾家 | 型号:GJ-508 | 规格:单人位，带电动功能 | 材质:头层牛皮+金属框架 | 功能:电动调节，USB充电 | 安装:整装配送，插电即用 | 来源:京东顾家官方旗舰店',notes:'京东功能沙发销量第一',mainCategory:'soft_furnishing',subCategory:'ps_furniture'},
+    {name:'摩力克布艺沙发',brand:'摩力克',model:'MLK-303',specifications:'三人位+贵妃位',material:'科技布+实木框架',color:'灰色/蓝色',unit:'套',unitPrice:6800,origin:'广东',warranty:'三年',installationMethod:'整装配送',description:'品牌:摩力克 | 型号:MLK-303 | 规格:三人位+贵妃位，总长3.2m | 材质:科技布(耐磨≥50000次)+实木框架 | 填充:高密度海绵+羽绒靠包 | 来源:京东摩力克官方旗舰店',notes:'京东布艺沙发销量领先',mainCategory:'soft_furnishing',subCategory:'ps_furniture'},
+    
+    // 床品/家纺子类 - 京东品牌：富安娜
+    {name:'富安娜羽绒被',brand:'富安娜',model:'FA-95FG',specifications:'220×240cm',material:'95%白鹅绒',color:'白色',unit:'条',unitPrice:1800,origin:'广东',warranty:'两年',installationMethod:'直接使用',description:'品牌:富安娜 | 型号:FA-95FG | 规格:220×240cm，填充1500g | 材质:95%白鹅绒，蓬松度750+ | 面料:100支纯棉防羽布 | 保暖:适合冬季，保暖性强 | 来源:京东富安娜官方旗舰店',notes:'京东羽绒被销量冠军',mainCategory:'soft_furnishing',subCategory:'ps_bedding'}
+  ];
+  
+  var added = 0;
+  var skipped = 0;
+  var now = Date.now();
+  
+  products.forEach(function(pData){
+    // 检查是否已存在相同品牌、型号的产品，如果存在则更新而不是跳过
+    var existingIndex = S.products.findIndex(function(p){
+      return p.brand === pData.brand && p.model === pData.model;
+    });
+    
+    if(existingIndex >= 0){
+      // 更新现有产品信息（保留原有ID，只更新价格和描述等信息）
+      S.products[existingIndex].name = pData.name;
+      S.products[existingIndex].specifications = pData.specifications;
+      S.products[existingIndex].unit = pData.unit;
+      S.products[existingIndex].unitPrice = pData.unitPrice;
+      S.products[existingIndex].description = pData.description;
+      S.products[existingIndex].notes = pData.notes;
+      S.products[existingIndex].updatedAt = now;
+      skipped++;
+    } else {
+      // 添加新产品
+      var product = {
+        id: uid(),
+        name: pData.name,
+        brand: pData.brand,
+        model: pData.model,
+        mainCategory: pData.mainCategory,
+        subCategory: pData.subCategory,
+        specifications: pData.specifications,
+        material: pData.material,
+        color: pData.color,
+        unit: pData.unit,
+        unitPrice: pData.unitPrice,
+        origin: pData.origin,
+        environmentalRating: '',
+        warranty: pData.warranty,
+        installationMethod: pData.installationMethod,
+        description: pData.description,
+        notes: pData.notes,
+        photo: '', // 图片字段保留，可从京东获取图片URL
+        createdAt: now,
+        updatedAt: now
+      };
+      
+      S.products.push(product);
+      added++;
+    }
+  });
+  
+  saveProductsToStorage();
+  showToast('✅ 京东产品数据：已导入 ' + added + ' 个产品' + (skipped ? '，更新 ' + skipped + ' 个' : ''));
+  renderProductDb();
+}
+
 // ==================== ADD PRODUCTS TO QUOTE ====================
 function openAddProductsToQuote(){if(!S.currentFileId){showToast('请先打开报价文件');return}S.addProdSelectedIds=[];renderApqList();openModal('addProdToQuoteModal')}
 function renderApqList(){var qm=S.customerInfo.quoteMode||'full';var cats=qm==='full'?PRODUCT_MAIN_CATEGORIES:PRODUCT_MAIN_CATEGORIES.filter(function(mc){return mc.id!=='equipment'&&mc.id!=='soft_furnishing'});var body=document.getElementById('addProdToQuoteBody');body.innerHTML='<div class="lib-filter"><select id="apqMainFilter" onchange="apqFilterChange()"><option value="">全部分类</option>'+cats.map(function(mc){return'<option value="'+mc.id+'">'+mc.icon+' '+mc.name+'</option>'}).join('')+'</select><select id="apqSubFilter" onchange="renderApqList()"><option value="">全部子类</option></select><input id="apqSearch" placeholder="搜索..." oninput="renderApqList()" style="width:150px"></div><div id="apqListArea" style="max-height:380px;overflow-y:auto"></div>';document.getElementById('apqMainFilter').onchange=apqFilterChange;renderApqListInner()}
@@ -453,22 +1327,11 @@ var apqQt={};function toggleApqSelect(id){var i=S.addProdSelectedIds.indexOf(id)
 function confirmAddProductsToQuote(){if(!S.addProdSelectedIds.length){showToast('请选择产品');return}pushUndoState();S.addProdSelectedIds.forEach(function(id){var p=S.products.find(function(x){return x.id===id});if(!p)return;var qEl=document.querySelector('.psi-qty[onclick*="'+id+'"]');var qty=qEl?parseFloat(qEl.value)||1:1;var ex=S.productQuoteItems.find(function(q){return q.productId===id});if(ex)ex.quantity+=qty;else S.productQuoteItems.push({id:uid(),productId:p.id,name:p.name,brand:p.brand,model:p.model,mainCategory:p.mainCategory,subCategory:p.subCategory,specifications:p.specifications,material:p.material,color:p.color,quantity:qty,unit:p.unit,unitPrice:p.unitPrice,description:p.description||'',notes:p.notes||'',photo:p.photo||''})});S.addProdSelectedIds=[];closeModal('addProdToQuoteModal');renderQuoteTable();renderSummary();showToast('已添加');markDirty()}
 
 // ==================== EXPORT VERSIONS ====================
-function toggleExportMenu(e){e.stopPropagation();document.getElementById('exportMenu').classList.toggle('show');document.getElementById('printMenu').classList.remove('show');document.getElementById('categoryExportMenu').classList.remove('show')}
-function togglePrintMenu(e){e.stopPropagation();document.getElementById('printMenu').classList.toggle('show');document.getElementById('exportMenu').classList.remove('show');document.getElementById('categoryExportMenu').classList.remove('show')}
-function toggleCategoryExportMenu(e){e.stopPropagation();document.getElementById('categoryExportMenu').classList.toggle('show');document.getElementById('exportMenu').classList.remove('show');document.getElementById('printMenu').classList.remove('show')}
+function toggleExportMenu(e){e.stopPropagation();document.getElementById('exportMenu').classList.toggle('show')}
+function toggleImportMenu(e){e.stopPropagation();document.getElementById('importMenu').classList.toggle('show');document.getElementById('exportMenu').classList.remove('show')}
 document.addEventListener('click',closeAllMenus);
 
 function calcQuoteTotal(){var qm=S.customerInfo.quoteMode||'full';var engTotal=S.quoteItems.reduce(function(s,i){return s+(i.quantity||0)*(i.unitPrice||0)},0);var visiblePQI=qm==='full'?S.productQuoteItems:S.productQuoteItems.filter(function(q){return q.mainCategory!=='equipment'&&q.mainCategory!=='soft_furnishing'});var prodTotal=visiblePQI.reduce(function(s,i){return s+(i.quantity||0)*(i.unitPrice||0)},0);var sub=engTotal+prodTotal;var mgmt=sub*S.managementFeeRate/100;var tax=sub*S.taxRate/100;return{engTotal:engTotal,prodTotal:prodTotal,subtotal:sub,mgmt:mgmt,tax:tax,grandTotal:sub+mgmt+tax+S.garbageFee+S.protectionFee}}
-function exportPDF(version){if(!S.currentFileId){showToast('请先打开报价文件');return}var ci=S.customerInfo;var labels={luxury:'奢享全案',premium:'优享精造'};var totals=calcQuoteTotal();var el=document.createElement('div');el.style.cssText='position:absolute;left:-9999px;top:0;padding:0;margin:0;font-family:"Microsoft YaHei",sans-serif;color:#222;background:#fff;width:794px';
-  if(version==='simple'){el.innerHTML=simpleExportHTML(ci,labels,totals)}else{el.innerHTML=detailedExportHTML(ci,labels,totals)}
-  document.body.appendChild(el);html2pdf().set({margin:[8,5,8,5],filename:'报价单-'+(version==='simple'?'简约':'详细')+'版.pdf',image:{type:'jpeg',quality:0.98},html2canvas:{scale:2,useCORS:true,logging:false,width:794,windowWidth:794},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}}).from(el).save().then(function(){document.body.removeChild(el)}).catch(function(e){console.error(e);document.body.removeChild(el)})}
-function printQuote(version){if(!S.currentFileId){showToast('请先打开报价文件');return}var ci=S.customerInfo;var labels={luxury:'奢享全案',premium:'优享精造'};var totals=calcQuoteTotal();var html;if(version==='simple')html=simpleExportHTML(ci,labels,totals);else html=detailedExportHTML(ci,labels,totals);html='<div style="position:fixed;top:0;right:10px"><button onclick="window.print()" style="padding:8px 16px;border:1px solid #ccc;background:#fff;cursor:pointer;border-radius:6px;font-size:14px">打印</button></div>'+html;var w=window.open('','_blank');w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>报价单</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:"Microsoft YaHei",sans-serif;padding:20px;color:#222}</style></head><body>'+html);w.document.close()}
-function exportHeaderHTML(ci,labels){var modeLabels={full:'全案落地',light:'轻工辅料'};var qm=ci.quoteMode||'full';return '<div style="text-align:center;margin-bottom:16px"><div style="font-size:22px;font-weight:700;letter-spacing:2px">斑马精装报价单</div><div style="font-size:12px;color:#888;margin-top:2px">'+(labels[S.currentPlan]||'')+' · '+(modeLabels[qm]||'全案落地')+'</div></div><table style="width:100%;font-size:12px;border-collapse:collapse;margin-bottom:12px"><tr><td style="width:25%;padding:4px 0;border-bottom:1px solid #e0e0e0"><b>客户：</b>'+esc(ci.name)+'</td><td style="width:25%;padding:4px 0;border-bottom:1px solid #e0e0e0"><b>联系方式：</b>'+esc(ci.phone)+'</td><td style="width:25%;padding:4px 0;border-bottom:1px solid #e0e0e0"><b>设计师：</b>'+esc(ci.designer)+'</td><td style="width:25%;padding:4px 0;border-bottom:1px solid #e0e0e0"><b>设计师电话：</b>'+esc(ci.designerPhone)+'</td></tr><tr><td colspan="2" style="padding:4px 0;border-bottom:1px solid #e0e0e0"><b>地址：</b>'+esc(ci.address)+'</td><td style="padding:4px 0;border-bottom:1px solid #e0e0e0"><b>工艺标准：</b>'+(labels[S.currentPlan]||'')+'</td><td style="padding:4px 0;border-bottom:1px solid #e0e0e0"><b>报价模式：</b>'+(modeLabels[qm]||'全案落地')+'</td></tr><tr><td colspan="2" style="padding:4px 0"><b>面积：</b>'+esc(ci.area)+'㎡</td><td style="padding:4px 0"><b>日期：</b>'+esc(ci.date)+'</td><td></td></tr></table>'}
-function exportSummaryHTML(totals){return '<div style="margin-top:14px"><table style="width:100%;border-collapse:collapse;font-size:12px"><tr style="border-bottom:1px solid #e0e0e0"><td style="padding:6px 0">工程报价</td><td style="padding:6px 0;text-align:center;font-weight:600;white-space:nowrap">¥'+fmt(totals.engTotal)+'</td></tr>'+(totals.prodTotal>0?'<tr style="border-bottom:1px solid #e0e0e0"><td style="padding:6px 0">产品清单</td><td style="padding:6px 0;text-align:center;font-weight:600;white-space:nowrap">¥'+fmt(totals.prodTotal)+'</td></tr>':'')+'<tr style="border-bottom:1px solid #e0e0e0"><td style="padding:6px 0">直接费用</td><td style="padding:6px 0;text-align:center;font-weight:600;white-space:nowrap">¥'+fmt(totals.subtotal)+'</td></tr><tr style="border-bottom:1px solid #e0e0e0"><td style="padding:6px 0">管理费 ('+S.managementFeeRate+'%)</td><td style="padding:6px 0;text-align:center;white-space:nowrap">¥'+fmt(totals.mgmt)+'</td></tr><tr style="border-bottom:1px solid #e0e0e0"><td style="padding:6px 0">税金 ('+S.taxRate+'%)</td><td style="padding:6px 0;text-align:center;white-space:nowrap">¥'+fmt(totals.tax)+'</td></tr><tr style="border-bottom:1px solid #e0e0e0"><td style="padding:6px 0">垃圾清运</td><td style="padding:6px 0;text-align:center;white-space:nowrap">¥'+fmt(S.garbageFee)+'</td></tr><tr style="border-bottom:1px solid #e0e0e0"><td style="padding:6px 0">成品保护</td><td style="padding:6px 0;text-align:center;white-space:nowrap">¥'+fmt(S.protectionFee)+'</td></tr><tr><td style="padding:8px 0;font-size:14px;font-weight:700;border-top:2px solid #333">报价总计</td><td style="padding:8px 0;text-align:center;font-size:16px;font-weight:700;color:#c00;border-top:2px solid #333;white-space:nowrap">¥'+fmt(totals.grandTotal)+'</td></tr></table></div>'}
-function simpleExportHTML(ci,labels,totals){return '<div style="padding:12px 16px">'+exportHeaderHTML(ci,labels)+(S.customNotes?'<div style="margin-bottom:12px"><div style="font-size:12px;font-weight:600;margin-bottom:4px">备注信息</div><div style="font-size:11px;white-space:pre-wrap;line-height:1.8;color:#555">'+esc(S.customNotes)+'</div></div>':'')+exportSimpleTable()+exportSummaryHTML(totals)+'</div>'}
-function detailedExportHTML(ci,labels,totals){return '<div style="padding:12px 16px">'+exportHeaderHTML(ci,labels)+exportDetailedTable()+exportSummaryHTML(totals)+'</div>'}
-function exportSimpleTable(){var items=S.quoteItems.concat(S.productQuoteItems);var seq=1;var fg={};S.rooms.forEach(function(r){var f=r.floor||'一楼';if(!fg[f])fg[f]=[];fg[f].push(r)});var floors=Object.keys(fg).sort(function(a,b){return floorSortKey(a)-floorSortKey(b)});var h='<table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:10px;table-layout:auto"><thead><tr style="border-bottom:2px solid #bbb"><th style="padding:6px 4px;text-align:center;width:32px">序号</th><th style="padding:6px 4px;text-align:center">项目</th><th style="padding:6px 4px;text-align:center;white-space:nowrap;min-width:80px">金额</th></tr></thead><tbody>';floors.forEach(function(fl){var rooms=fg[fl];var fi=items.filter(function(q){return rooms.some(function(r){return r.id===q.roomId})});if(!fi.length)return;var fT=fi.reduce(function(s,q){return s+q.quantity*q.unitPrice},0);h+='<tr><td colspan="3" style="padding:7px 4px;font-weight:600;font-size:12px;border-bottom:1px solid #e0e0e0">🏗️ '+esc(fl)+'<span style="float:right;white-space:nowrap">¥'+fmt(fT)+'</span></td></tr>';rooms.forEach(function(room){var ri=fi.filter(function(q){return q.roomId===room.id});if(!ri.length)return;var rT=ri.reduce(function(s,q){return s+q.quantity*q.unitPrice},0);h+='<tr><td colspan="3" style="padding:5px 4px 5px 16px;font-weight:600;border-bottom:1px solid #f0f0f0">📍 '+esc(room.name)+'<span style="float:right;white-space:nowrap">¥'+fmt(rT)+'</span></td></tr>';ri.forEach(function(qi){h+='<tr style="border-bottom:1px solid #f0f0f0"><td style="padding:4px;text-align:center">'+seq+'</td><td style="padding:4px">'+esc(qi.name)+'</td><td style="padding:4px;text-align:center;font-weight:500;white-space:nowrap">¥'+fmt(qi.quantity*qi.unitPrice)+'</td></tr>';seq++})})});var ui=items.filter(function(q){return q.roomId==='__utility__'});if(ui.length){var uT=ui.reduce(function(s,q){return s+q.quantity*q.unitPrice},0);h+='<tr><td colspan="3" style="padding:7px 4px;font-weight:600;font-size:12px;border-bottom:1px solid #e0e0e0">⚡ 水电暖气下水<span style="float:right;white-space:nowrap">¥'+fmt(uT)+'</span></td></tr>';ui.forEach(function(q){h+='<tr style="border-bottom:1px solid #f0f0f0"><td style="padding:4px;text-align:center">'+seq+'</td><td style="padding:4px">'+esc(q.name)+'</td><td style="padding:4px;text-align:center;font-weight:500;white-space:nowrap">¥'+fmt(q.quantity*q.unitPrice)+'</td></tr>';seq++})}var citems=items.filter(function(q){return q.roomId==='__custom__'});if(citems.length){h+='<tr><td colspan="3" style="padding:7px 4px;font-weight:600;font-size:12px;border-bottom:1px solid #e0e0e0">📝 自定义</td></tr>';citems.forEach(function(q){h+='<tr style="border-bottom:1px solid #f0f0f0"><td style="padding:4px;text-align:center">'+seq+'</td><td style="padding:4px">'+esc(q.name)+'</td><td style="padding:4px;text-align:center;font-weight:500;white-space:nowrap">¥'+fmt(q.quantity*q.unitPrice)+'</td></tr>';seq++})}if(S.productQuoteItems.length){var qm=S.customerInfo.quoteMode||'full';var exCats=qm==='full'?PRODUCT_MAIN_CATEGORIES:PRODUCT_MAIN_CATEGORIES.filter(function(mc){return mc.id!=='equipment'&&mc.id!=='soft_furnishing'});exCats.forEach(function(mc){var pi=S.productQuoteItems.filter(function(q){return q.mainCategory===mc.id});if(!pi.length)return;var pT=pi.reduce(function(s,q){return s+q.quantity*q.unitPrice},0);h+='<tr><td colspan="3" style="padding:7px 4px;font-weight:600;font-size:12px;border-bottom:1px solid #e0e0e0">'+mc.icon+' '+mc.name+'<span style="float:right;white-space:nowrap">¥'+fmt(pT)+'</span></td></tr>';pi.forEach(function(q){h+='<tr style="border-bottom:1px solid #f0f0f0"><td style="padding:4px;text-align:center">'+seq+'</td><td style="padding:4px">'+esc(q.name)+'</td><td style="padding:4px;text-align:center;font-weight:500;white-space:nowrap">¥'+fmt(q.quantity*q.unitPrice)+'</td></tr>';seq++})})}h+='</tbody></table>';return h}
-function exportDetailedTable(){var items=S.quoteItems.concat(S.productQuoteItems);var seq=1;var fg={};S.rooms.forEach(function(r){var f=r.floor||'一楼';if(!fg[f])fg[f]=[];fg[f].push(r)});var floors=Object.keys(fg).sort(function(a,b){return floorSortKey(a)-floorSortKey(b)});var h='<table style="width:100%;border-collapse:collapse;font-size:10px;margin-top:10px;table-layout:fixed"><colgroup><col style="width:32px"><col><col style="width:42px"><col style="width:36px"><col style="width:60px"><col style="width:70px"><col></colgroup><thead><tr style="border-bottom:2px solid #bbb"><th style="padding:5px 3px;text-align:center">序号</th><th style="padding:5px 3px;text-align:center">项目</th><th style="padding:5px 3px;text-align:center">数量</th><th style="padding:5px 3px;text-align:center">单位</th><th style="padding:5px 3px;text-align:center">单价</th><th style="padding:5px 3px;text-align:center">金额</th><th style="padding:5px 3px;text-align:center">说明</th></tr></thead><tbody>';function dRow(qi,s){return '<tr style="border-bottom:1px solid #f0f0f0"><td style="padding:3px 2px;text-align:center">'+s+'</td><td style="padding:3px 2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(qi.name)+'</td><td style="padding:3px 2px;text-align:center">'+qi.quantity+'</td><td style="padding:3px 2px;text-align:center">'+esc(qi.unit)+'</td><td style="padding:3px 2px;text-align:center;white-space:nowrap">¥'+fmt(qi.unitPrice)+'</td><td style="padding:3px 2px;text-align:center;font-weight:600;white-space:nowrap">¥'+fmt(qi.quantity*qi.unitPrice)+'</td><td style="padding:3px 2px;color:#666;font-size:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(qi.description||'')+'</td></tr>'}floors.forEach(function(fl){var rooms=fg[fl];var fi=items.filter(function(q){return rooms.some(function(r){return r.id===q.roomId})});if(!fi.length)return;var fT=fi.reduce(function(s,q){return s+q.quantity*q.unitPrice},0);h+='<tr><td colspan="5" style="padding:6px 3px;font-weight:600;font-size:11px;border-bottom:1px solid #e0e0e0">🏗️ '+esc(fl)+'</td><td></td><td style="text-align:right;font-weight:600;white-space:nowrap">¥'+fmt(fT)+'</td></tr>';rooms.forEach(function(room){var ri=fi.filter(function(q){return q.roomId===room.id});if(!ri.length)return;var rT=ri.reduce(function(s,q){return s+q.quantity*q.unitPrice},0);h+='<tr><td colspan="5" style="padding:4px 3px 4px 14px;font-weight:600;border-bottom:1px solid #f0f0f0">📍 '+esc(room.name)+'</td><td></td><td style="text-align:right;font-weight:600;white-space:nowrap">¥'+fmt(rT)+'</td></tr>';ri.forEach(function(qi){h+=dRow(qi,seq++)})})});var ui=items.filter(function(q){return q.roomId==='__utility__'});if(ui.length){var uT=ui.reduce(function(s,q){return s+q.quantity*q.unitPrice},0);h+='<tr><td colspan="7" style="padding:6px 3px;font-weight:600;font-size:11px;border-bottom:1px solid #e0e0e0">⚡ 水电暖气下水<span style="float:right;white-space:nowrap">¥'+fmt(uT)+'</span></td></tr>';ui.forEach(function(q){h+=dRow(q,seq++)})}var citems=items.filter(function(q){return q.roomId==='__custom__'});if(citems.length){h+='<tr><td colspan="7" style="padding:6px 3px;font-weight:600;font-size:11px;border-bottom:1px solid #e0e0e0">📝 自定义</td></tr>';citems.forEach(function(q){h+=dRow(q,seq++)})}if(S.productQuoteItems.length){var qm2=S.customerInfo.quoteMode||'full';var exCats2=qm2==='full'?PRODUCT_MAIN_CATEGORIES:PRODUCT_MAIN_CATEGORIES.filter(function(mc){return mc.id!=='equipment'&&mc.id!=='soft_furnishing'});exCats2.forEach(function(mc){var pi=S.productQuoteItems.filter(function(q){return q.mainCategory===mc.id});if(!pi.length)return;var pT=pi.reduce(function(s,q){return s+q.quantity*q.unitPrice},0);h+='<tr><td colspan="7" style="padding:6px 3px;font-weight:600;font-size:11px;border-bottom:1px solid #e0e0e0">'+mc.icon+' '+mc.name+'<span style="float:right;white-space:nowrap">¥'+fmt(pT)+'</span></td></tr>';pi.forEach(function(q){h+=dRow(q,seq++)})})}h+='</tbody></table>';return h}
 function cleanTableHTML(){return document.getElementById('quoteTableWrapper').innerHTML.replace(/class="qt-input"[^>]*>/g,'style="border:none;background:transparent;font-size:11px"').replace(/class="btn-x[^"]*"/g,'style="display:none"').replace(/class="[^"]*no-print[^"]*"/g,'style="display:none"').replace(/onchange="[^"]*"/g,'').replace(/onclick="[^"]*"/g,'')}
 
 // ==================== EXPORT EXCEL ====================
@@ -596,7 +1459,37 @@ function toggleImportCheckAll(c){document.querySelectorAll('.import-room-cb').fo
 function doImportRooms(){if(!S.importSelectedFileId)return;var file=S.files.find(function(f){return f.id===S.importSelectedFileId});if(!file)return;var rooms=file.data.rooms||[];var sel=[];document.querySelectorAll('.import-room-cb:checked').forEach(function(cb){sel.push(cb.value)});if(!sel.length){showToast('请选择');return}var n=0;rooms.forEach(function(r){if(sel.indexOf(r.id)===-1)return;var nr={id:uid(),name:r.name,spaceTypeId:r.spaceTypeId,floor:r.floor||'一楼',area:r.area,perimeter:r.perimeter,height:r.height,doors:r.doors||[],windows:r.windows||[],hasEquipment:false,hasCustom:!!(r.customItems&&r.customItems.length),hasFeatureWall:false,equipmentItems:[],customItems:[],featureWallItems:[]};if(r.customItems&&r.customItems.length){nr.customItems=r.customItems.map(function(c){var lookupName=(c.name||'').replace('上柜','').replace('下柜','');var m=S.materials.find(function(x){return x.name===lookupName&&x.category==='定制产品'});var obj={name:c.name,type:c.type||'',length:c.length||0,height:c.height||0,unitPrice:m?m.prices[S.currentPlan]:0};if(c.quantity)obj.quantity=c.quantity;if(c.unit)obj.unit=c.unit;return obj})}S.rooms.push(nr);S.quoteItems=S.quoteItems.concat(generateRoomItems(nr));n++});closeModal('importConfirmModal');renderRoomList();renderQuoteTable();renderSummary();showToast('已导入'+n+'个房间');markDirty()}
 
 // ==================== THEME & VIEW ====================
-function setTheme(t){S.currentTheme=t;document.documentElement.setAttribute('data-theme',t);document.querySelectorAll('.theme-btn').forEach(function(b){b.classList.remove('active')});var btn=document.querySelector('.theme-btn[onclick*="'+t+'"]');if(btn)btn.classList.add('active');saveSettings()}
+function setTheme(t){
+  S.currentTheme=t;
+  document.documentElement.setAttribute('data-theme',t);
+  // 切换 Tailwind dark 类
+  if (t === 'dark') {
+    document.documentElement.classList.add('dark');
+  } else {
+    document.documentElement.classList.remove('dark');
+  }
+  document.querySelectorAll('.theme-btn').forEach(function(b){
+    b.classList.remove('active');
+  });
+  var btn=document.querySelector('.theme-btn[onclick*="'+t+'"]');
+  if(btn)btn.classList.add('active');
+  saveSettings();
+  updateThemeToggleIcon();
+}
+function toggleDarkMode() {
+  var current = S.currentTheme;
+  var newTheme = current === 'dark' ? 'light' : 'dark';
+  setTheme(newTheme);
+  updateThemeToggleIcon();
+}
+
+function updateThemeToggleIcon() {
+  var toggleBtn = document.getElementById('themeToggle');
+  if (toggleBtn) {
+    toggleBtn.textContent = S.currentTheme === 'dark' ? '🌙' : '☀️';
+  }
+}
+
 function setFont(f){document.documentElement.style.setProperty('--font-family',f)}
 function setPlan(p){S.currentPlan=p;S.customerInfo.plan=p;document.querySelectorAll('.plan-btn').forEach(function(b){b.classList.remove('active')});var btn=document.querySelector('.plan-btn[onclick*="'+p+'"]');if(btn)btn.classList.add('active');var custPlanEl=document.getElementById('custPlan');if(custPlanEl)custPlanEl.value=p;regenerateAllQuotes();saveSettings();markDirty()}
 function openModal(id){document.getElementById(id).classList.add('active')}function closeModal(id){document.getElementById(id).classList.remove('active')}
@@ -679,7 +1572,7 @@ function updateCeilingSpecs(){
 }
 function openRoomEditor(rid){S.editingRoomId=rid||null;var r=rid?S.rooms.find(function(x){return x.id===rid}):null;document.getElementById('roomEditorTitle').textContent=r?'编辑房间':'添加房间';var stO=S.spaceTypes.map(function(s){return'<option value="'+s.id+'" '+(r&&r.spaceTypeId===s.id?'selected':'')+'>'+s.icon+' '+s.name+'</option>'}).join('');var flO=FLOOR_ORDER.map(function(f){return'<option value="'+f+'" '+(r&&r.floor===f?'selected':'')+'>'+f+'</option>'}).join('');var eqP=DEFAULT_EQUIPMENT.map(function(e){return'<option value="'+esc(e.name)+'">'+esc(e.name)+' ('+esc(e.brand)+')</option>'}).join('');var cP=['衣柜','书柜','护墙板','门','橱柜上柜','橱柜下柜','电视柜','踢脚线','特殊五金','特殊工艺'].map(function(n){return'<option value="'+n+'">'+n+'</option>'}).join('');
 var floorMat=(r&&r.floorMaterial)||{};var wallMat=(r&&r.wallMaterial)||{};var ceilingMat=(r&&r.ceilingMaterial)||{};
-var matSection='<div class="sub-section" style="background:rgba(59,130,246,0.05);border:1px solid rgba(59,130,246,0.2);border-radius:10px;padding:14px;margin-bottom:12px"><h4 style="color:var(--accent);margin-bottom:10px">🎨 主材选择 <span style="font-size:11px;font-weight:normal;color:#888">(选择各面主要装饰材料)</span></h4><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px"><div style="background:var(--card);padding:8px;border-radius:6px;border:1px solid var(--border)"><div style="font-size:11px;font-weight:600;margin-bottom:6px">🏠 地面</div><select id="reFloorType" onchange="updateFloorSpecs()" style="width:100%;margin-bottom:4px;font-size:11px"><option value="">请选择...</option><option value="ceramic_tile" '+(floorMat.type==='ceramic_tile'?'selected':'')+'>地砖</option><option value="flooring" '+(floorMat.type==='flooring'?'selected':'')+'>地板</option><option value="marble" '+(floorMat.type==='marble'?'selected':'')+'>大理石/岩板</option></select><select id="reFloorSpec" style="width:100%;margin-bottom:4px;font-size:11px"><option value="">请先选类型</option>'+getFloorSpecOptions(floorMat.type,floorMat.spec)+'</select><select id="reFloorCraft" style="width:100%;font-size:11px"><option value="standard">常规铺贴</option><option value="premium" '+(floorMat.craft==='premium'?'selected':'')+'>精细铺贴</option></select></div><div style="background:var(--card);padding:8px;border-radius:6px;border:1px solid var(--border)"><div style="font-size:11px;font-weight:600;margin-bottom:6px">🧱 墙面</div><select id="reWallType" onchange="updateWallSpecs()" style="width:100%;margin-bottom:4px;font-size:11px"><option value="">请选择...</option><option value="paint" '+(wallMat.type==='paint'?'selected':'')+'>乳胶漆</option><option value="wallpaper" '+(wallMat.type==='wallpaper'?'selected':'')+'>壁纸/壁布</option><option value="wall_tile" '+(wallMat.type==='wall_tile'?'selected':'')+'>墙砖</option></select><select id="reWallSpec" style="width:100%;margin-bottom:4px;font-size:11px"><option value="">请先选类型</option>'+getWallSpecOptions(wallMat.type,wallMat.spec)+'</select><select id="reWallCraft" style="width:100%;font-size:11px"><option value="standard">标准工艺</option><option value="premium" '+(wallMat.craft==='premium'?'selected':'')+'>精品工艺</option></select></div><div style="background:var(--card);padding:8px;border-radius:6px;border:1px solid var(--border)"><div style="font-size:11px;font-weight:600;margin-bottom:6px">💡 顶面</div><select id="reCeilingType" onchange="updateCeilingSpecs()" style="width:100%;margin-bottom:4px;font-size:11px"><option value="">请选择...</option><option value="none" '+(ceilingMat.type==='none'?'selected':'')+'>不吊顶</option><option value="gypsum" '+(ceilingMat.type==='gypsum'?'selected':'')+'>石膏板吊顶</option><option value="no_main_light" '+(ceilingMat.type==='no_main_light'?'selected':'')+'>无主灯吊顶</option></select><select id="reCeilingSpec" style="width:100%;margin-bottom:4px;font-size:11px"><option value="">请先选类型</option>'+getCeilingSpecOptions(ceilingMat.type,ceilingMat.spec)+'</select><select id="reCeilingCraft" style="width:100%;font-size:11px"><option value="standard">标准</option><option value="premium" '+(ceilingMat.craft==='premium'?'selected':'')+'>精品</option></select></div></div></div>';
+var matSection='<div class="sub-section" style="background:rgba(59,130,246,0.05);border:1px solid rgba(59,130,246,0.2);border-radius:10px;padding:14px;margin-bottom:12px"><h4 style="color:var(--accent);margin-bottom:10px">🎨 主材选择 <span style="font-size:11px;font-weight:normal;color:#888">(选择各面主要装饰材料)</span></h4><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px"><div style="background:var(--card);padding:8px;border-radius:6px;border:1px solid var(--border)"><div style="font-size:11px;font-weight:600;margin-bottom:6px">🏠 地面</div><select id="reFloorType" onchange="updateFloorSpecs()" style="width:100%;margin-bottom:4px;font-size:11px;line-height:2;color:var(--text);background-color:var(--input-bg)"><option value="">请选择...</option><option value="ceramic_tile" '+(floorMat.type==='ceramic_tile'?'selected':'')+'>地砖</option><option value="flooring" '+(floorMat.type==='flooring'?'selected':'')+'>地板</option><option value="marble" '+(floorMat.type==='marble'?'selected':'')+'>大理石/岩板</option></select><select id="reFloorSpec" style="width:100%;margin-bottom:4px;font-size:11px;line-height:2;color:var(--text);background-color:var(--input-bg)"><option value="">请先选类型</option>'+getFloorSpecOptions(floorMat.type,floorMat.spec)+'</select><select id="reFloorCraft" style="width:100%;margin-bottom:4px;font-size:11px;line-height:2;color:var(--text);background-color:var(--input-bg)"><option value="standard">常规铺贴</option><option value="premium" '+(floorMat.craft==='premium'?'selected':'')+'>精细铺贴</option></select></div><div style="background:var(--card);padding:8px;border-radius:6px;border:1px solid var(--border)"><div style="font-size:11px;font-weight:600;margin-bottom:6px">🧱 墙面</div><select id="reWallType" onchange="updateWallSpecs()" style="width:100%;margin-bottom:4px;font-size:11px;line-height:2;color:var(--text);background-color:var(--input-bg)"><option value="">请选择...</option><option value="paint" '+(wallMat.type==='paint'?'selected':'')+'>乳胶漆</option><option value="wallpaper" '+(wallMat.type==='wallpaper'?'selected':'')+'>壁纸/壁布</option><option value="wall_tile" '+(wallMat.type==='wall_tile'?'selected':'')+'>墙砖</option></select><select id="reWallSpec" style="width:100%;margin-bottom:4px;font-size:11px;line-height:2;color:var(--text);background-color:var(--input-bg)"><option value="">请先选类型</option>'+getWallSpecOptions(wallMat.type,wallMat.spec)+'</select><select id="reWallCraft" style="width:100%;margin-bottom:4px;font-size:11px;line-height:2;color:var(--text);background-color:var(--input-bg)"><option value="standard">标准工艺</option><option value="premium" '+(wallMat.craft==='premium'?'selected':'')+'>精品工艺</option></select></div><div style="background:var(--card);padding:8px;border-radius:6px;border:1px solid var(--border)"><div style="font-size:11px;font-weight:600;margin-bottom:6px">💡 顶面</div><select id="reCeilingType" onchange="updateCeilingSpecs()" style="width:100%;margin-bottom:4px;font-size:11px;line-height:2;color:var(--text);background-color:var(--input-bg)"><option value="">请选择...</option><option value="none" '+(ceilingMat.type==='none'?'selected':'')+'>不吊顶</option><option value="gypsum" '+(ceilingMat.type==='gypsum'?'selected':'')+'>石膏板吊顶</option><option value="no_main_light" '+(ceilingMat.type==='no_main_light'?'selected':'')+'>无主灯吊顶</option></select><select id="reCeilingSpec" style="width:100%;margin-bottom:4px;font-size:11px;line-height:2;color:var(--text);background-color:var(--input-bg)"><option value="">请先选类型</option>'+getCeilingSpecOptions(ceilingMat.type,ceilingMat.spec)+'</select><select id="reCeilingCraft" style="width:100%;margin-bottom:4px;font-size:11px;line-height:2;color:var(--text);background-color:var(--input-bg)"><option value="standard">标准</option><option value="premium" '+(ceilingMat.craft==='premium'?'selected':'')+'>精品</option></select></div></div></div>';
 document.getElementById('roomEditorBody').innerHTML='<div class="form-grid"><div class="form-group"><label>名称</label><input id="reName" value="'+(r?esc(r.name):'')+'"></div><div class="form-group"><label>空间类型</label><select id="reSpaceType">'+stO+'</select></div><div class="form-group"><label>楼层</label><select id="reFloor">'+flO+'</select></div><div class="form-group"><label>面积 (㎡)</label><input type="number" id="reArea" value="'+(r?r.area:'')+'" step="0.01"></div><div class="form-group"><label>周长 (m)</label><input type="number" id="rePerimeter" value="'+(r?r.perimeter:'')+'" step="0.01"></div><div class="form-group"><label>高度 (m)</label><input type="number" id="reHeight" value="'+(r?r.height:'')+'" step="0.01"></div></div>'+matSection+'<div class="sub-section"><h4>门</h4><div id="reDoors">'+(r?(r.doors||[]).map(dwRow).join(''):'')+'</div><button class="btn btn-outline btn-sm" onclick="addDoor()">+ 添加</button></div><div class="sub-section"><h4>窗户</h4><div id="reWindows">'+(r?(r.windows||[]).map(dwRow).join(''):'')+'</div><button class="btn btn-outline btn-sm" onclick="addWindow()">+ 添加</button></div><div class="sub-section"><h4>附加</h4><div class="section-toggle"><label><input type="checkbox" id="reHasEquip" '+(r&&r.hasEquipment?'checked':'')+' onchange="toggleSection(\'Equip\',this.checked)"> 设备</label><label><input type="checkbox" id="reHasCustom" '+(r&&r.hasCustom?'checked':'')+' onchange="toggleSection(\'Custom\',this.checked)"> 定制</label><label><input type="checkbox" id="reHasFeatureWall" '+(r&&r.hasFeatureWall?'checked':'')+' onchange="toggleSection(\'Fw\',this.checked)"> 背景墙</label></div><div id="reEquipSection" style="display:'+(r&&r.hasEquipment?'block':'none')+'"><div style="margin-bottom:6px"><select id="equipPresetSelect"><option value="">预设...</option>'+eqP+'</select> <button class="btn btn-outline btn-sm" onclick="addPresetEquip()">添加</button></div><div id="reEquipItems">'+(r&&r.hasEquipment?(r.equipmentItems||[]).map(equipRow).join(''):'')+'</div><button class="btn btn-outline btn-sm" onclick="addEquipItem()">+ 自定义</button></div><div id="reCustomSection" style="display:'+(r&&r.hasCustom?'block':'none')+'"><div style="margin-bottom:6px"><select id="customPresetSelect"><option value="">预设...</option>'+cP+'</select> <button class="btn btn-outline btn-sm" onclick="addPresetCustom()">添加</button></div><div id="reCustomItems">'+(r&&r.hasCustom?(r.customItems||[]).map(customRow).join(''):'')+'</div><button class="btn btn-outline btn-sm" onclick="addCustomItem()">+ 自定义</button></div><div id="reFwSection" style="display:'+(r&&r.hasFeatureWall?'block':'none')+'"><div id="reFwItems">'+(r&&r.hasFeatureWall?(r.featureWallItems||[]).map(fwRow).join(''):'')+'</div><button class="btn btn-outline btn-sm" onclick="addFwItem()">+ 背景</button></div></div>';openModal('roomEditorModal')}
 function addDoor(){var c=document.getElementById('reDoors');var d=document.createElement('div');d.innerHTML=dwRow({});c.appendChild(d.firstElementChild)}function addWindow(){var c=document.getElementById('reWindows');var d=document.createElement('div');d.innerHTML=dwRow({});c.appendChild(d.firstElementChild)}
 function equipRow(d){return'<div class="equip-row"><input placeholder="名称" value="'+(d?esc(d.name):'')+'" style="width:100px"><input placeholder="品牌" value="'+(d?esc(d.brand):'')+'" style="width:90px"><input placeholder="单价" value="'+(d?d.unitPrice:'')+'" type="number" style="width:65px"><input placeholder="数量" value="'+(d?d.quantity:1)+'" type="number" style="width:50px"><input placeholder="单位" value="'+(d?esc(d.unit||'项'):'项')+'" style="width:40px"><button class="btn-x" onclick="this.parentElement.remove()">×</button></div>'}
@@ -719,7 +1612,6 @@ function toggleSidebarRoom(roomId){var details=document.getElementById('sidebar-
 function generateRoomItems(room){var items=[],fa=room.area,ca=room.area,da=(room.doors||[]).reduce(function(s,d){return s+d.width*d.height},0),wa2=(room.windows||[]).reduce(function(s,w){return s+w.width*w.height},0),wa=Math.max(0,room.perimeter*room.height-da-wa2),sk=Math.max(0,room.perimeter-(room.doors||[]).reduce(function(s,d){return s+d.width},0)),ww=(room.windows||[]).reduce(function(s,w){return s+w.width},0),dp=(room.doors||[]).reduce(function(s,d){return s+(d.width+d.height)*2},0),wp=(room.windows||[]).reduce(function(s,w){return s+(w.width+w.height)*2},0),ws=(room.windows||[]).length;
 var wallDeduct=0;
 if(room.hasCustom)(room.customItems||[]).forEach(function(cp){var t=cp.type||'';if(t==='护墙板'||t==='衣柜'){wallDeduct+=(cp.length||0)*(cp.height||0)}});
-if(room.hasFeatureWall)(room.featureWallItems||[]).forEach(function(fw){});
 wa=Math.max(0,wa-wallDeduct);
 var app=S.materials.filter(function(m){if(m.calcType==='building_area')return false;if(m.name==='窗帘盒制作')return false;if(!m.spaceTypeFilter||!m.spaceTypeFilter.length)return true;return m.spaceTypeFilter.includes(room.spaceTypeId)});
 var floorType=(room.floorMaterial&&room.floorMaterial.type)||'';var wallType=(room.wallMaterial&&room.wallMaterial.type)||'';var ceilingType=(room.ceilingMaterial&&room.ceilingMaterial.type)||'';
@@ -770,7 +1662,7 @@ var subG={};pi.forEach(function(q){if(!subG[q.subCategory])subG[q.subCategory]=[
 Object.keys(subG).forEach(function(subId){var subI=subG[subId];var sT=subI.reduce(function(s,q){return s+q.quantity*q.unitPrice},0);
 h+='<tr><td colspan="5" style="text-align:left;padding-left:20px;font-size:10px;color:var(--text-dim);border-bottom:1px solid var(--border)">▸ '+getSubCatLabel(mc.id,subId)+'</td><td style="text-align:right;font-size:10px;color:var(--text-dim);border-bottom:1px solid var(--border)">¥'+fmt(sT)+'</td><td></td><td class="no-print"></td></tr>';
 subI.forEach(function(q){h+=qRow(q,ps++)})})})}h+='<tr><td colspan="7" style="text-align:right;padding-right:12px"><button class="btn btn-outline btn-sm no-print" onclick="addCustomQuoteItem()">+ 自定义</button></td><td class="no-print"></td></tr>';h+='</tbody></table>';w.innerHTML=h}
-function qRow(qi,seq,sectionId,roomId){var a=qi.quantity*qi.unitPrice;var cls='room-item-row';var attrs=' data-room-id="'+sectionId+'"';if(roomId)attrs+=' data-room-id2="'+roomId+'"';var secCol=_collapseState[sectionId];var roomCol=roomId?_collapseState[roomId]:false;if(secCol||roomCol)cls+=' collapsed';return '<tr class="'+cls+'"'+attrs+'><td>'+seq+'</td><td><input class="qt-input qt-name" value="'+esc(qi.name)+'" onchange="updateQI(\''+qi.id+'\',\'name\',this.value)"></td><td><input class="qt-input qt-qty" type="number" value="'+qi.quantity+'" step="0.01" onchange="updateQI(\''+qi.id+'\',\'quantity\',this.value)" style="text-align:center"></td><td><input class="qt-input qt-unit" value="'+esc(qi.unit)+'" onchange="updateQI(\''+qi.id+'\',\'unit\',this.value)" style="text-align:center"></td><td><div style="display:flex;align-items:center;justify-content:center"><span style="color:var(--text-dim);margin-right:0">¥</span><input class="qt-input qt-price" type="number" value="'+qi.unitPrice+'" step="0.01" onchange="updateQI(\''+qi.id+'\',\'unitPrice\',this.value)" style="text-align:center;padding-left:2px"></div></td><td class="col-amount">¥'+fmt(a)+'</td><td><input class="qt-input qt-desc" value="'+esc(qi.description||'')+'" onchange="updateQI(\''+qi.id+'\',\'description\',this.value)"></td><td class="no-print"><button class="btn-x" onclick="deleteQI(\''+qi.id+'\')">×</button></td></tr>'}
+function qRow(qi,seq,sectionId,roomId){var a=qi.quantity*qi.unitPrice;var cls='room-item-row';var attrs=' data-room-id="'+sectionId+'"';if(roomId)attrs+=' data-room-id2="'+roomId+'"';var secCol=_collapseState[sectionId];var roomCol=roomId?_collapseState[roomId]:false;if(secCol||roomCol)cls+=' collapsed';return '<tr class="'+cls+'"'+attrs+'><td>'+seq+'</td><td style="text-align:left;padding:4px 6px"><div class="qt-input qt-name" contenteditable="true" onblur="updateQI(\''+qi.id+'\',\'name\',this.textContent)">'+esc(qi.name)+'</div></td><td><input class="qt-input qt-qty" type="number" value="'+qi.quantity+'" step="0.01" onchange="updateQI(\''+qi.id+'\',\'quantity\',this.value)" style="text-align:center"></td><td><input class="qt-input qt-unit" value="'+esc(qi.unit)+'" onchange="updateQI(\''+qi.id+'\',\'unit\',this.value)" style="text-align:center"></td><td><div style="display:flex;align-items:center;justify-content:center"><span style="color:var(--text-dim);margin-right:0">¥</span><input class="qt-input qt-price" type="number" value="'+qi.unitPrice+'" step="0.01" onchange="updateQI(\''+qi.id+'\',\'unitPrice\',this.value)" style="text-align:center;padding-left:2px"></div></td><td class="col-amount">¥'+fmt(a)+'</td><td style="text-align:left;padding:4px 6px"><div class="qt-input qt-desc" contenteditable="true" onblur="updateQI(\''+qi.id+'\',\'description\',this.textContent)">'+esc(qi.description||'')+'</div></td><td class="no-print"><button class="btn-x" onclick="deleteQI(\''+qi.id+'\')">×</button></td></tr>'}
 function updateQI(id,f,v){pushUndoState();var q=S.quoteItems.concat(S.productQuoteItems).find(function(x){return x.id===id});if(!q)return;if(f==='quantity'||f==='unitPrice')q[f]=parseFloat(v)||0;else q[f]=v;debounceRenderQuoteTable();markDirty()}
 function deleteQI(id){pushUndoState();S.quoteItems=S.quoteItems.filter(function(q){return q.id!==id});S.productQuoteItems=S.productQuoteItems.filter(function(q){return q.id!==id});debounceRenderQuoteTable();markDirty()}
 function addCustomQuoteItem(){pushUndoState();S.quoteItems.push({id:uid(),roomId:'__custom__',name:'自定义项目',quantity:1,unit:'项',unitPrice:0,description:'',category:'自定义'});debounceRenderQuoteTable();markDirty()}
@@ -879,12 +1771,12 @@ function renderMaterialLib(){document.getElementById('materialLibBody').innerHTM
 function getUniqueBrands(){var b=[];S.materials.forEach(function(m){if(m.brand&&m.brand!=='-'&&b.indexOf(m.brand)===-1)b.push(m.brand)});return b.sort()}
 function renderMaterialTable(){var cv=(document.getElementById('matCatFilter')||{}).value;var sr=((document.getElementById('matSearch')||{}).value||'').toLowerCase();var m=S.materials;if(cv)m=m.filter(function(x){return x.category===cv});if(sr)m=m.filter(function(x){return x.name.toLowerCase().includes(sr)||(x.brand||'').toLowerCase().includes(sr)});var el=document.getElementById('matTableArea');if(!m.length){el.innerHTML='<div class="empty-state"><p>暂无</p></div>';return}el.innerHTML='<table class="lib-table"><thead><tr><th>名称</th><th>品牌</th><th>单位</th><th>奢享</th><th>优享</th><th>分类</th><th>说明</th><th>操作</th></tr></thead><tbody>'+m.map(function(x){return'<tr><td>'+esc(x.name)+'</td><td>'+esc(x.brand)+'</td><td>'+esc(x.unit)+'</td><td>'+(x.prices.luxury?x.prices.luxury+'元':'-')+'</td><td>'+(x.prices.premium?x.prices.premium+'元':'-')+'</td><td>'+esc(x.category)+'</td><td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(x.description)+'</td><td><button class="btn btn-outline btn-sm" onclick="editMaterial(\''+x.id+'\')">编辑</button> <button class="btn btn-danger btn-sm" onclick="deleteMaterial(\''+x.id+'\')">删除</button></td></tr>'}).join('')+'</tbody></table>'}
 function batchUpdateBrand(){var b=getUniqueBrands();document.getElementById('matFormArea').innerHTML='<div class="mat-form"><div class="form-grid"><div class="form-group"><label>原品牌</label><select id="batchOldBrand">'+b.map(function(x){return'<option>'+esc(x)+'</option>'}).join('')+'</select></div><div class="form-group"><label>新品牌</label><input id="batchNewBrand"></div></div><div style="margin-top:6px"><button class="btn btn-primary btn-sm" onclick="doBatchUpdateBrand()">确认</button></div></div>'}
-function doBatchUpdateBrand(){var o=document.getElementById('batchOldBrand').value;var n=document.getElementById('batchNewBrand').value.trim();if(!o||!n)return;var c=0;S.materials.forEach(function(m){if(m.brand===o){m.brand=n;c++}});if(c>0){document.getElementById('matFormArea').innerHTML='';renderMaterialTable();syncPricesFromMaterials();renderQuoteTable();renderSummary();saveSettings();showToast('已更新'+c+'个')}else showToast('未找到')}
+function doBatchUpdateBrand(){var o=document.getElementById('batchOldBrand').value;var n=document.getElementById('batchNewBrand').value.trim();if(!o||!n)return;var c=0;S.materials.forEach(function(m){if(m.brand===o){m.brand=n;c++}});if(c>0){document.getElementById('matFormArea').innerHTML='';renderMaterialTable();syncPricesFromMaterials();renderQuoteTable();renderSummary();saveMaterialsToStorage();showToast('已更新'+c+'个')}else showToast('未找到')}
 function onBrandSelectChange(){var select=document.getElementById('mfBrandSelect');var input=document.getElementById('mfBrand');if(select&&input){input.value=select.value}}
-function showMaterialForm(mat){S.editingMaterialId=mat?mat.id:null;var area=document.getElementById('matFormArea');var stC=S.spaceTypes.map(function(s){return'<label style="font-size:10px;display:inline-flex;align-items:center;gap:2px;margin-right:4px"><input type="checkbox" class="mat-st-filter" value="'+s.id+'" '+(mat&&mat.spaceTypeFilter&&mat.spaceTypeFilter.includes(s.id)?'checked':'')+'>'+s.name+'</label>'}).join('');var pd=mat&&mat.processDetail?mat.processDetail:{luxury:'',premium:''};var brands=getUniqueBrands();area.innerHTML='<div class="mat-form"><div class="form-grid"><div class="form-group"><label>名称</label><input id="mfName" value="'+(mat?esc(mat.name):'')+'"></div><div class="form-group"><label>品牌</label><div style="display:flex;gap:4px"><select id="mfBrandSelect" onchange="onBrandSelectChange()">'+brands.map(function(b){return'<option value="'+esc(b)+'" '+(mat&&mat.brand===b?'selected':'')+'>'+esc(b)+'</option>'}).join('')+'<option value="" '+(mat&&!mat.brand?'selected':'')+'>- 选择品牌 -</option></select><input id="mfBrand" value="'+(mat?esc(mat.brand):'')+'" placeholder="或输入新品牌" style="flex:1"></div></div><div class="form-group"><label>单位</label><input id="mfUnit" value="'+(mat?esc(mat.unit):'㎡')+'"></div><div class="form-group"><label>分类</label><select id="mfCategory">'+CATEGORIES.map(function(c){return'<option value="'+c+'" '+(mat&&mat.category===c?'selected':'')+'>'+c+'</option>'}).join('')+'</select></div><div class="form-group" style="grid-column:1/-1;display:flex;gap:8px"><div style="flex:1;min-width:120px;display:flex;flex-direction:column;gap:2px"><label style="font-size:11px;color:var(--text-light);font-weight:500">计算</label><select id="mfCalcType" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;outline:none;transition:border-color .2s;background:var(--input-bg);color:var(--text);font-family:var(--font-family)">'+Object.keys(CALC_TYPES).map(function(k){return'<option value="'+k+'" '+(mat&&mat.calcType===k?'selected':'')+'>'+CALC_TYPES[k]+'</option>'}).join('')+'</select></div><div style="flex:1;min-width:100px;display:flex;flex-direction:column;gap:2px"><label style="font-size:11px;color:var(--text-light);font-weight:500">奢享</label><input type="number" id="mfPL" value="'+(mat?mat.prices.luxury:0)+'" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;outline:none;transition:border-color .2s;background:var(--input-bg);color:var(--text);font-family:var(--font-family)"></div><div style="flex:1;min-width:100px;display:flex;flex-direction:column;gap:2px"><label style="font-size:11px;color:var(--text-light);font-weight:500">优享</label><input type="number" id="mfPP" value="'+(mat?mat.prices.premium:0)+'" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;outline:none;transition:border-color .2s;background:var(--input-bg);color:var(--text);font-family:var(--font-family)"></div></div><div class="form-group full"><label>说明</label><div style="display:flex;gap:6px;align-items:center"><input id="mfDesc" value="'+(mat?esc(mat.description):'')+'" style="flex:1"><button class="btn btn-info btn-sm" onclick="aiOptimizeField(\'mfDesc\',\'construction\')" title="AI智能优化说明">🤖</button></div></div><div class="form-group full"><label>奢享工艺</label><div style="display:flex;gap:6px;align-items:center"><input id="mfPDL" value="'+esc(pd.luxury)+'" style="flex:1"><button class="btn btn-info btn-sm" onclick="aiOptimizeField(\'mfPDL\',\'construction\')" title="AI智能优化工艺">🤖</button></div></div><div class="form-group full"><label>优享工艺</label><div style="display:flex;gap:6px;align-items:center"><input id="mfPDP" value="'+esc(pd.premium)+'" style="flex:1"><button class="btn btn-info btn-sm" onclick="aiOptimizeField(\'mfPDP\',\'construction\')" title="AI智能优化工艺">🤖</button></div></div><div class="form-group full"><label>适用空间</label><div>'+stC+'</div></div></div><div style="margin-top:6px;display:flex;gap:6px"><button class="btn btn-primary btn-sm" onclick="saveMaterial()">保存</button><button class="btn btn-outline btn-sm" onclick="document.getElementById(\'matFormArea\').innerHTML=\'\'">取消</button></div></div>'}
+function showMaterialForm(mat){S.editingMaterialId=mat?mat.id:null;var area=document.getElementById('matFormArea');var pd=mat&&mat.processDetail?mat.processDetail:{luxury:'',premium:''};var brands=getUniqueBrands();area.innerHTML='<div class="mat-form"><div class="form-grid"><div class="form-group"><label>名称</label><input id="mfName" value="'+(mat?esc(mat.name):'')+'"></div><div class="form-group"><label>品牌</label><div style="display:flex;gap:4px"><select id="mfBrandSelect" onchange="onBrandSelectChange()">'+brands.map(function(b){return'<option value="'+esc(b)+'" '+(mat&&mat.brand===b?'selected':'')+'>'+esc(b)+'</option>'}).join('')+'<option value="" '+(mat&&!mat.brand?'selected':'')+'>- 选择品牌 -</option></select><input id="mfBrand" value="'+(mat?esc(mat.brand):'')+'" placeholder="或输入新品牌" style="flex:1"></div></div><div class="form-group"><label>单位</label><input id="mfUnit" value="'+(mat?esc(mat.unit):'㎡')+'"></div><div class="form-group"><label>分类</label><select id="mfCategory">'+CATEGORIES.map(function(c){return'<option value="'+c+'" '+(mat&&mat.category===c?'selected':'')+'>'+c+'</option>'}).join('')+'</select></div><div class="form-group" style="grid-column:1/-1;display:flex;gap:8px"><div style="flex:1;min-width:120px;display:flex;flex-direction:column;gap:2px"><label style="font-size:12px;color:var(--text-light);font-weight:500">计算</label><select id="mfCalcType" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;outline:none;transition:border-color .2s;background:var(--input-bg);color:var(--text);font-family:var(--font-family)">'+Object.keys(CALC_TYPES).map(function(k){return'<option value="'+k+'" '+(mat&&mat.calcType===k?'selected':'')+'>'+CALC_TYPES[k]+'</option>'}).join('')+'</select></div><div style="flex:1;min-width:100px;display:flex;flex-direction:column;gap:2px"><label style="font-size:12px;color:var(--text-light);font-weight:500">奢享</label><input type="number" id="mfPL" value="'+(mat?mat.prices.luxury:0)+'" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;outline:none;transition:border-color .2s;background:var(--input-bg);color:var(--text);font-family:var(--font-family)"></div><div style="flex:1;min-width:100px;display:flex;flex-direction:column;gap:2px"><label style="font-size:12px;color:var(--text-light);font-weight:500">优享</label><input type="number" id="mfPP" value="'+(mat?mat.prices.premium:0)+'" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;outline:none;transition:border-color .2s;background:var(--input-bg);color:var(--text);font-family:var(--font-family)"></div></div><div class="form-group full"><label>说明</label><div style="display:flex;gap:6px;align-items:center"><input id="mfDesc" value="'+(mat?esc(mat.description):'')+'" style="flex:1"><button class="btn btn-info btn-sm" onclick="aiOptimizeField(\'mfDesc\',\'construction\')" title="AI智能优化说明">🤖</button></div></div><div class="form-group full"><label>奢享工艺</label><div style="display:flex;gap:6px;align-items:center"><input id="mfPDL" value="'+esc(pd.luxury)+'" style="flex:1"><button class="btn btn-info btn-sm" onclick="aiOptimizeField(\'mfPDL\',\'construction\')" title="AI智能优化工艺">🤖</button></div></div><div class="form-group full"><label>优享工艺</label><div style="display:flex;gap:6px;align-items:center"><input id="mfPDP" value="'+esc(pd.premium)+'" style="flex:1"><button class="btn btn-info btn-sm" onclick="aiOptimizeField(\'mfPDP\',\'construction\')" title="AI智能优化工艺">🤖</button></div></div></div><div style="margin-top:6px;display:flex;gap:6px"><button class="btn btn-primary btn-sm" onclick="saveMaterial()">保存</button><button class="btn btn-outline btn-sm" onclick="document.getElementById(\'matFormArea\').innerHTML=\'\'">取消</button></div></div>'}
 function editMaterial(mid){var m=S.materials.find(function(x){return x.id===mid});if(m)showMaterialForm(m)}
-function saveMaterial(){var n=document.getElementById('mfName').value.trim();if(!n){showToast('请输入名称');return}var stF=[];document.querySelectorAll('.mat-st-filter:checked').forEach(function(c){stF.push(c.value)});var d={id:S.editingMaterialId||uid(),name:n,brand:document.getElementById('mfBrand').value.trim(),unit:document.getElementById('mfUnit').value.trim(),prices:{luxury:parseFloat(document.getElementById('mfPL').value)||0,premium:parseFloat(document.getElementById('mfPP').value)||0},description:document.getElementById('mfDesc').value.trim(),category:document.getElementById('mfCategory').value,calcType:document.getElementById('mfCalcType').value,spaceTypeFilter:stF,processDetail:{luxury:document.getElementById('mfPDL').value.trim(),premium:document.getElementById('mfPDP').value.trim()}};if(S.editingMaterialId){var i=S.materials.findIndex(function(x){return x.id===S.editingMaterialId});if(i>=0)S.materials[i]=d}else S.materials.push(d);S.editingMaterialId=null;document.getElementById('matFormArea').innerHTML='';renderMaterialTable();syncPricesFromMaterials();renderQuoteTable();renderSummary();saveSettings();showToast('已保存')}
-function deleteMaterial(mid){if(!confirm('确定删除？'))return;S.materials=S.materials.filter(function(m){return m.id!==mid});S.quoteItems=S.quoteItems.filter(function(q){return q.materialId!==mid});renderMaterialTable();renderQuoteTable();renderSummary();saveSettings();markDirty()}
+function saveMaterial(){var n=document.getElementById('mfName').value.trim();if(!n){showToast('请输入名称');return}var d={id:S.editingMaterialId||uid(),name:n,brand:document.getElementById('mfBrand').value.trim(),unit:document.getElementById('mfUnit').value.trim(),prices:{luxury:parseFloat(document.getElementById('mfPL').value)||0,premium:parseFloat(document.getElementById('mfPP').value)||0},description:document.getElementById('mfDesc').value.trim(),category:document.getElementById('mfCategory').value,calcType:document.getElementById('mfCalcType').value,spaceTypeFilter:[],processDetail:{luxury:document.getElementById('mfPDL').value.trim(),premium:document.getElementById('mfPDP').value.trim()}};if(S.editingMaterialId){var i=S.materials.findIndex(function(x){return x.id===S.editingMaterialId});if(i>=0)S.materials[i]=d}else S.materials.push(d);S.editingMaterialId=null;document.getElementById('matFormArea').innerHTML='';renderMaterialTable();syncPricesFromMaterials();renderQuoteTable();renderSummary();saveMaterialsToStorage();showToast('已保存')}
+function deleteMaterial(mid){if(!confirm('确定删除？'))return;S.materials=S.materials.filter(function(m){return m.id!==mid});S.quoteItems=S.quoteItems.filter(function(q){return q.materialId!==mid});renderMaterialTable();renderQuoteTable();renderSummary();saveMaterialsToStorage();markDirty()}
 function openSpaceTypeLib(){renderSpaceTypeLib();openModal('spaceTypeLibModal')}
 function renderSpaceTypeLib(){document.getElementById('spaceTypeLibBody').innerHTML='<div style="margin-bottom:10px"><button class="btn btn-primary btn-sm" onclick="showSpaceTypeForm()">+ 添加</button></div><div id="stListArea"></div>';renderSpaceTypeList()}
 function renderSpaceTypeList(){var el=document.getElementById('stListArea');if(!S.spaceTypes.length){el.innerHTML='<div class="empty-state"><p>暂无</p></div>';return}el.innerHTML=S.spaceTypes.map(function(st){return '<div class="st-item"><div class="st-item-header"><span class="st-item-name">'+st.icon+' '+esc(st.name)+'</span><div><button class="btn btn-outline btn-sm" onclick="editSpaceType(\''+st.id+'\')">编辑</button> <button class="btn btn-danger btn-sm" onclick="deleteSpaceType(\''+st.id+'\')">删除</button></div></div></div>'}).join('')}
@@ -900,7 +1792,21 @@ function toggleWatermark(){S.watermarkEnabled=!S.watermarkEnabled;var btn=docume
 var _aiAbortController=null;
 var _aiOptimizeAbortController=null;
 function aiOptimizeField(fieldId,type){var el=document.getElementById(fieldId);if(!el){showToast('字段不存在');return}var text=el.value.trim();if(!text){showToast('请先输入内容再优化');return}if(!S.ollamaModel){showToast('请先在系统设置中配置AI模型');return}var prompt=type==='construction'?S.aiOptimizeConstructionPrompt:S.aiOptimizeProductPrompt;if(!prompt){showToast('请先在系统设置中配置AI优化提示词');return}var btn=el.parentElement.querySelector('.btn-info');var origHtml=btn?btn.innerHTML:'🤖';if(btn){btn.innerHTML='<span class="spinner"></span>';btn.disabled=true}el.classList.add('ai-optimizing');if(_aiOptimizeAbortController){_aiOptimizeAbortController.abort()}_aiOptimizeAbortController=new AbortController();var fullPrompt=prompt+'\n\n--- 原始内容 ---\n'+text;var fullText='';var provider=S.aiProvider;var apiUrl=S.aiApiUrl;var apiKey=S.aiApiKey;var model=S.ollamaModel;(async function(){try{var fetchOpts={method:'POST',headers:{},signal:_aiOptimizeAbortController.signal};var endpoint='';if(provider==='ollama'){endpoint=apiUrl+'/api/chat';fetchOpts.headers['Content-Type']='application/json';fetchOpts.body=JSON.stringify({model:model,messages:[{role:'user',content:fullPrompt}],stream:true,options:{temperature:0.3}})}else{var chatPath=provider==='zhipu'?'/v4/chat/completions':provider==='doubao'?'/chat/completions':'/v1/chat/completions';endpoint=apiUrl.replace(/\/+$/,'')+chatPath;fetchOpts.headers['Content-Type']='application/json';fetchOpts.headers['Authorization']='Bearer '+apiKey;fetchOpts.body=JSON.stringify({model:model,messages:[{role:'user',content:fullPrompt}],stream:true,temperature:0.3})}var resp=await fetch(endpoint,fetchOpts);if(!resp.ok){var errText='';try{errText=await resp.text()}catch(e){}throw new Error('API请求失败: '+resp.status+(errText?' - '+errText:''))}var reader=resp.body.getReader();var decoder=new TextDecoder();var buffer='';while(true){var chunk=await reader.read();if(chunk.done)break;buffer+=decoder.decode(chunk.value,{stream:true});var lines=buffer.split('\n');buffer=lines.pop();for(var i=0;i<lines.length;i++){var line=lines[i].trim();if(!line)continue;if(line.startsWith('data: '))line=line.substring(6);if(line==='[DONE]')continue;try{var json=JSON.parse(line);var content='';if(provider==='ollama'){if(json.message&&json.message.content)content=json.message.content}else{if(json.choices&&json.choices[0]&&json.choices[0].delta&&json.choices[0].delta.content)content=json.choices[0].delta.content}if(content)fullText+=content}catch(e){}}}if(fullText){el.value=fullText.trim();el.classList.remove('ai-optimizing');el.classList.add('ai-optimize-success');setTimeout(function(){el.classList.remove('ai-optimize-success')},1500);showToast('✅ AI优化成功')}else{el.classList.remove('ai-optimizing');showToast('AI未返回结果，请检查模型配置')}}catch(e){if(e.name==='AbortError'){el.classList.remove('ai-optimizing');showToast('AI优化已停止')}else{el.classList.remove('ai-optimizing');showToast('AI优化出错: '+e.message)}}finally{if(btn){btn.innerHTML=origHtml;btn.disabled=false}_aiOptimizeAbortController=null}})()}
-function openAiAudit(){if(!S.ollamaModel){showToast('请先在系统设置中配置AI模型');return}document.getElementById('aiAuditBody').innerHTML='<div style="margin-bottom:12px;display:flex;gap:8px"><button class="btn btn-primary" onclick="startAiAudit()">开始审核</button><button class="btn btn-outline" onclick="stopAiAudit()">停止</button><span style="font-size:11px;color:var(--text-dim);line-height:32px">当前模型: '+esc(S.aiProvider)+' / '+esc(S.ollamaModel)+'</span></div><div class="ai-result" id="aiResult"></div>';openModal('aiAuditModal')}
+function openAiAudit(){
+  // 检查许可证限制
+  if (typeof License !== 'undefined') {
+    var restriction = License.checkFeatureRestriction('ai_audit');
+    if (!restriction.allowed) {
+      showToast(restriction.message || '功能受限');
+      License.showPurchaseModal();
+      return;
+    }
+  }
+  
+  if(!S.ollamaModel){showToast('请先在系统设置中配置AI模型');return}
+  document.getElementById('aiAuditBody').innerHTML='<div style="margin-bottom:12px;display:flex;gap:8px"><button class="btn btn-primary" onclick="startAiAudit()">开始审核</button><button class="btn btn-outline" onclick="stopAiAudit()">停止</button><span style="font-size:11px;color:var(--text-dim);line-height:32px">当前模型: '+esc(S.aiProvider)+' / '+esc(S.ollamaModel)+'</span></div><div class="ai-result" id="aiResult"></div>';
+  openModal('aiAuditModal')
+}
 function onAiProviderChange(){var p=document.getElementById('aiProvider').value;var urlInput=document.getElementById('aiApiUrl');var modelInput=document.getElementById('aiModel');var presets={ollama:{url:'http://localhost:11434',model:'qwen2.5',hint:'如 qwen2.5、llama3 等'},deepseek:{url:'https://api.deepseek.com',model:'deepseek-chat',hint:'如 deepseek-chat 等'},openai:{url:'https://api.openai.com',model:'gpt-4o-mini',hint:'如 gpt-4o-mini 等'},zhipu:{url:'https://open.bigmodel.cn/api/paas',model:'glm-4-flash',hint:'如 glm-4-flash 等'},doubao:{url:'https://ark.cn-beijing.volces.com/api/v3',model:'ep-xxxxxxxxx-xxxxx',hint:'填写火山方舟推理接入点ID，如 ep-20240604xxxxx-xxxxx'}};var pre=presets[p];if(pre){urlInput.value=pre.url;modelInput.placeholder=pre.hint}}
 function closeAiAudit(){stopAiAudit();closeModal('aiAuditModal')}
 function stopAiAudit(){if(_aiAbortController){_aiAbortController.abort();_aiAbortController=null}}
@@ -934,6 +1840,16 @@ if(!fullText)resultEl.textContent='审核完成，但未返回结果。请检查
 
 // 模板功能
 function saveAsTemplatePrompt() {
+  // 检查许可证限制
+  if (typeof License !== 'undefined') {
+    var restriction = License.checkFeatureRestriction('save_template');
+    if (!restriction.allowed) {
+      showToast(restriction.message || '功能受限');
+      License.showPurchaseModal();
+      return;
+    }
+  }
+  
   var name = prompt('请输入模板名称:', '报价模板-' + new Date().toISOString().split('T')[0]);
   if (name === null) return; // 用户取消
   name = name.trim();
@@ -945,8 +1861,8 @@ function saveAsTemplatePrompt() {
 }
 
 // ==================== INIT ====================
-try{loadState();setTheme(S.currentTheme);renderSidebar();showView('welcome');
-if(typeof LOGO_BASE64==='string'){document.getElementById('headerLogo').src=LOGO_BASE64;document.getElementById('welcomeLogo').src=LOGO_BASE64}
+try{loadState();if(typeof License !== 'undefined') License.checkOnLoad();setTheme(S.currentTheme);renderSidebar();showView('welcome');
+if(typeof applyBranding==='function'){applyBranding()}else if(typeof LOGO_BASE64==='string'){document.getElementById('headerLogo').src=LOGO_BASE64;document.getElementById('welcomeLogo').src=LOGO_BASE64}
 if(S.recentFileIds.length>0){var last=S.files.find(function(f){return f.id===S.recentFileIds[0]});if(last)openFile(last.id)}}catch(e){console.error('Init error:',e);showView('welcome')}
 document.addEventListener('keydown',function(e){
   if(e.ctrlKey&&e.key==='s'){e.preventDefault();saveCurrentFile()}
@@ -954,8 +1870,744 @@ document.addEventListener('keydown',function(e){
 });
 document.addEventListener('click',closeAllMenus);
 // Column resize
-(function(){var colMap={num:'.col-num',name:'.col-name',qty:'.col-qty',unit:'.col-unit',price:'.col-price',amount:'.col-amount',desc:'.col-desc'};function applyColWidths(){var w=S.colWidths||{};Object.keys(w).forEach(function(k){var sel=colMap[k];if(!sel)return;var th=document.querySelector('.quote-table th[data-col="'+k+'"]');if(th)th.style.width=w[k]+'px';var style=document.getElementById('dynColStyle');if(!style){style=document.createElement('style');style.id='dynColStyle';document.head.appendChild(style)}var rules=[];Object.keys(w).forEach(function(c){var s=colMap[c];if(s&&w[c])rules.push('.quote-table '+s+'{width:'+w[c]+'px}');if(c==='name')rules.push('.quote-table td:nth-child(2){width:'+w[c]+'px}');if(c==='qty')rules.push('.quote-table td:nth-child(3){width:'+w[c]+'px}');if(c==='unit')rules.push('.quote-table td:nth-child(4){width:'+w[c]+'px}');if(c==='price')rules.push('.quote-table td:nth-child(5){width:'+w[c]+'px}');if(c==='amount')rules.push('.quote-table td:nth-child(6){width:'+w[c]+'px}');if(c==='desc')rules.push('.quote-table td:nth-child(7){width:'+w[c]+'px}')});style.textContent=rules.join('\n')})}applyColWidths();var resizeTh=null,startX=0,startW=0;document.addEventListener('mousedown',function(e){var th=e.target.closest('th.resizable');if(!th)return;resizeTh=th;startX=e.clientX;startW=th.offsetWidth;e.preventDefault()});document.addEventListener('mousemove',function(e){if(!resizeTh)return;var col=resizeTh.getAttribute('data-col');if(!col)return;var nw=Math.max(28,startW+(e.clientX-startX));resizeTh.style.width=nw+'px';S.colWidths[col]=nw});document.addEventListener('mouseup',function(){if(resizeTh){resizeTh=null;applyColWidths();saveSettings()}})})();
+(function(){var colMap={num:'.col-num',name:'.col-name',qty:'.col-qty',unit:'.col-unit',price:'.col-price',amount:'.col-amount',desc:'.col-desc',action:'.col-action'};var fixedCols={num:24,name:100,qty:24,unit:24,price:24,amount:100,desc:180,action:24};function applyColWidths(){var w=S.colWidths||{};Object.keys(fixedCols).forEach(function(k){if(!w[k])w[k]=fixedCols[k]});var style=document.getElementById('dynColStyle');if(!style){style=document.createElement('style');style.id='dynColStyle';document.head.appendChild(style)}var rules=[];Object.keys(w).forEach(function(c){var s=colMap[c];if(s&&w[c])rules.push('.quote-table '+s+'{width:'+w[c]+'px;min-width:'+w[c]+'px;max-width:'+w[c]+'px}');var colIdx={num:1,name:2,qty:3,unit:4,price:5,amount:6,desc:7,action:8};if(colIdx[c]&&w[c])rules.push('.quote-table td:nth-child('+colIdx[c]+'){width:'+w[c]+'px;min-width:'+w[c]+'px;max-width:'+w[c]+'px}')});rules.push('.quote-table th,.quote-table td{vertical-align:middle;text-align:center}');rules.push('.quote-table td.col-name,.quote-table td.col-desc{text-align:left}');style.textContent=rules.join('\n');Object.keys(w).forEach(function(k){var sel=colMap[k];if(!sel)return;var th=document.querySelector('.quote-table th[data-col="'+k+'"]');if(th)th.style.width=w[k]+'px'})}window.applyColWidths=applyColWidths;applyColWidths();var resizeTh=null,startX=0,startW=0;document.addEventListener('mousedown',function(e){var th=e.target.closest('th.resizable');if(!th)return;var col=th.getAttribute('data-col');if(col==='name'||col==='desc'||col==='action')return;resizeTh=th;startX=e.clientX;startW=th.offsetWidth;e.preventDefault()});document.addEventListener('mousemove',function(e){if(!resizeTh)return;var col=resizeTh.getAttribute('data-col');if(!col)return;var nw=Math.max(28,startW+(e.clientX-startX));resizeTh.style.width=nw+'px';S.colWidths[col]=nw});document.addEventListener('mouseup',function(){if(resizeTh){resizeTh=null;applyColWidths();saveSettings()}})})();
+;function applyQuoteTableStyles(){applyColWidths();var fs=S.fontSizes||{table:12,header:12,project:14,description:11,input:11};var style=document.getElementById('dynFontStyle');if(!style){style=document.createElement('style');style.id='dynFontStyle';document.head.appendChild(style)}var rules=[];rules.push('.quote-table{font-size:'+fs.table+'px}');rules.push('.quote-table th{font-size:'+fs.header+'px}');rules.push('div.qt-name{font-size:'+fs.project+'px}');rules.push('div.qt-desc{font-size:'+fs.description+'px}');rules.push('.qt-input{font-size:'+fs.input+'px}');rules.push('div.qt-input{min-height:'+(S.rowHeight||36)+'px}');rules.push('.quote-table th,.quote-table td{vertical-align:middle}');rules.push('.quote-table td.col-name,.quote-table td.col-desc{vertical-align:middle}');style.textContent=rules.join('\n');document.querySelectorAll('.quote-table').forEach(function(t){t.style.fontSize=fs.table+'px'});document.querySelectorAll('.quote-table th').forEach(function(th){th.style.fontSize=fs.header+'px'});document.querySelectorAll('div.qt-name').forEach(function(el){el.style.fontSize=fs.project+'px'});document.querySelectorAll('div.qt-desc').forEach(function(el){el.style.fontSize=fs.description+'px'});document.querySelectorAll('.qt-input').forEach(function(el){el.style.fontSize=fs.input+'px'});document.querySelectorAll('div.qt-input').forEach(function(el){el.style.minHeight=(S.rowHeight||36)+'px'})}
 // Row resize
 (function(){var resizeRow=null,startY=0,startH=0;document.addEventListener('mousedown',function(e){var td=e.target.closest('td');if(!td)return;var tr=td.parentElement;if(!tr||!tr.closest('.quote-table'))return;var rect=td.getBoundingClientRect();if(rect.bottom-e.clientY<6){resizeRow=tr;startY=e.clientY;startH=tr.offsetHeight;e.preventDefault()}});document.addEventListener('mousemove',function(e){if(!resizeRow)return;resizeRow.style.height=Math.max(22,startH+(e.clientY-startY))+'px'});document.addEventListener('mouseup',function(){resizeRow=null})})();
 ['importDialogModal','importConfirmModal','saveFileModal','addProdToQuoteModal','bossPwdModal','aiAuditModal'].forEach(function(id){document.getElementById(id).addEventListener('click',function(e){if(e.target===this)closeModal(id)})});
+
+// ==================== AI 计算器 ====================
+function showAICalculator() {
+  if (document.getElementById('aiCalculatorWindow')) {
+    document.getElementById('aiCalculatorWindow').style.display = 'flex';
+    return;
+  }
+  
+  var calcWindow = document.createElement('div');
+  calcWindow.id = 'aiCalculatorWindow';
+  calcWindow.className = 'ai-calculator-window';
+  calcWindow.style.cssText = `
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    width: 340px;
+    background: var(--card);
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    box-shadow: var(--shadow-lg);
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    font-family: 'Microsoft YaHei', sans-serif;
+  `;
+  
+  // 标题栏
+  var header = document.createElement('div');
+  header.className = 'calc-header';
+  header.style.cssText = `
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    background: var(--accent);
+    color: white;
+    cursor: move;
+    user-select: none;
+  `;
+  header.innerHTML = `
+    <div style="font-weight: 600; font-size: 14px;">🤖 AI 计算器</div>
+    <div style="display: flex; gap: 6px;">
+      <button class="calc-btn-minimize" style="background: transparent; border: none; color: white; font-size: 16px; cursor: pointer;">─</button>
+      <button class="calc-btn-close" style="background: transparent; border: none; color: white; font-size: 16px; cursor: pointer;">×</button>
+    </div>
+  `;
+  
+  // 内容区域
+  var content = document.createElement('div');
+  content.className = 'calc-content';
+  content.style.cssText = `
+    padding: 16px;
+    flex: 1;
+    overflow-y: auto;
+  `;
+  
+  // 添加计算器按钮样式
+  var style = document.createElement('style');
+  style.textContent = `
+    .calc-btn {
+      aspect-ratio: 1 / 1;
+      border-radius: 4px;
+      border: none;
+      background: var(--input-bg);
+      color: var(--text);
+      font-size: 16px;
+      font-weight: 400;
+      cursor: pointer;
+      transition: background 0.1s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 0;
+    }
+    .calc-btn:hover {
+      background: var(--hover-bg);
+    }
+    .calc-btn:active {
+      background: var(--border-strong);
+    }
+    .result-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+      font-size: 13px;
+    }
+    .result-label {
+      color: var(--text-dim);
+      min-width: 40px;
+    }
+    .result-value {
+      font-weight: 600;
+      color: var(--accent);
+      background: var(--hover-bg);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+      user-select: all;
+      cursor: text;
+    }
+  `;
+  content.appendChild(style);
+  
+  // 标签页
+  var tabs = document.createElement('div');
+  tabs.className = 'calc-tabs';
+  tabs.style.cssText = `
+    display: flex;
+    border-bottom: 1px solid var(--border-strong);
+    margin-bottom: 16px;
+    gap: 2px;
+  `;
+  
+  var tabTitles = ['基础计算', '面积计算', '瓷砖计算', '单位换算'];
+  var tabContents = [];
+  
+  tabTitles.forEach(function(title, index) {
+    var tab = document.createElement('button');
+    tab.className = 'calc-tab';
+    tab.textContent = title;
+    tab.style.cssText = `
+      flex: 1;
+      padding: 10px 6px;
+      background: transparent;
+      border: none;
+      border-bottom: 3px solid transparent;
+      font-size: 11px;
+      cursor: pointer;
+      color: var(--text-dim);
+      font-weight: 500;
+      transition: all 0.2s;
+    `;
+    tab.addEventListener('click', function() {
+      document.querySelectorAll('.calc-tab').forEach(function(t) {
+        t.style.borderBottomColor = 'transparent';
+        t.style.color = 'var(--text-dim)';
+      });
+      tab.style.borderBottomColor = 'var(--accent)';
+      tab.style.color = 'var(--text)';
+      
+      document.querySelectorAll('.calc-tab-content').forEach(function(c) {
+        c.style.display = 'none';
+      });
+      document.getElementById('calc-tab-' + index).style.display = 'block';
+    });
+    tabs.appendChild(tab);
+    
+    var tabContent = document.createElement('div');
+    tabContent.className = 'calc-tab-content';
+    tabContent.id = 'calc-tab-' + index;
+    tabContent.style.cssText = `display: ${index === 0 ? 'block' : 'none'}`;
+    tabContents.push(tabContent);
+  });
+  
+  // 第一个标签页：基础计算器
+  tabContents[0].innerHTML = `
+    <div style="margin-bottom: 16px;">
+      <div style="padding: 8px 12px; margin-bottom: 8px; text-align: right; color: var(--text-dim); font-size: 14px; min-height: 24px; line-height: 24px;" id="calcHistory"></div>
+      <input type="text" id="calcDisplay" readonly style="width:100%;padding: 16px 12px;font-size: 36px;text-align:right;border:none;border-radius:8px;background:transparent;color:var(--text);margin-bottom:8px;font-weight:400;box-shadow:none;" value="0">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;">
+        <button class="calc-btn" data-op="memory-clear" style="background:var(--hover-bg);color:var(--text);font-size:12px;">MC</button>
+        <button class="calc-btn" data-op="memory-recall" style="background:var(--hover-bg);color:var(--text);font-size:12px;">MR</button>
+        <button class="calc-btn" data-op="memory-add" style="background:var(--hover-bg);color:var(--text);font-size:12px;">M+</button>
+        <button class="calc-btn" data-op="memory-subtract" style="background:var(--hover-bg);color:var(--text);font-size:12px;">M-</button>
+        <button class="calc-btn" data-op="percent" style="background:var(--hover-bg);color:var(--text);font-size:14px;">%</button>
+        <button class="calc-btn" data-op="clear-entry" style="background:var(--hover-bg);color:var(--text);font-size:14px;">CE</button>
+        <button class="calc-btn" data-op="clear" style="background:var(--hover-bg);color:var(--text);font-size:14px;">C</button>
+        <button class="calc-btn" data-op="backspace" style="background:var(--hover-bg);color:var(--text);font-size:14px;">⌫</button>
+        <button class="calc-btn" data-op="reciprocal" style="background:var(--hover-bg);color:var(--text);font-size:14px;">1/x</button>
+        <button class="calc-btn" data-op="square" style="background:var(--hover-bg);color:var(--text);font-size:14px;">x²</button>
+        <button class="calc-btn" data-op="square-root" style="background:var(--hover-bg);color:var(--text);font-size:14px;">√x</button>
+        <button class="calc-btn" data-op="/" style="background:var(--hover-bg);color:var(--text);font-size:14px;">/</button>
+        <button class="calc-btn" data-op="7">7</button>
+        <button class="calc-btn" data-op="8">8</button>
+        <button class="calc-btn" data-op="9">9</button>
+        <button class="calc-btn" data-op="*" style="background:var(--hover-bg);color:var(--text);font-size:14px;">×</button>
+        <button class="calc-btn" data-op="4">4</button>
+        <button class="calc-btn" data-op="5">5</button>
+        <button class="calc-btn" data-op="6">6</button>
+        <button class="calc-btn" data-op="-" style="background:var(--hover-bg);color:var(--text);font-size:14px;">-</button>
+        <button class="calc-btn" data-op="1">1</button>
+        <button class="calc-btn" data-op="2">2</button>
+        <button class="calc-btn" data-op="3">3</button>
+        <button class="calc-btn" data-op="+" style="background:var(--hover-bg);color:var(--text);font-size:14px;">+</button>
+        <button class="calc-btn" data-op="sign" style="background:var(--hover-bg);color:var(--text);font-size:14px;">+/-</button>
+        <button class="calc-btn" data-op="0">0</button>
+        <button class="calc-btn" data-op=".">.</button>
+        <button class="calc-btn" data-op="equals" style="background:var(--accent);color:white;font-size:16px;">=</button>
+      </div>
+    </div>
+  `;
+  
+  // 第二个标签页：面积计算
+  tabContents[1].innerHTML = `
+    <div style="margin-bottom: 12px;">
+      <div class="form-group">
+        <label style="display:block;font-size:12px;margin-bottom:4px;">计算类型</label>
+        <select id="calcShapeType" style="width:100%;padding:8px;border:1px solid var(--border-strong);border-radius:6px;font-size:12px;background:var(--bg-secondary);color:var(--text);">
+          <option value="rectangle">矩形</option>
+          <option value="circle">圆形</option>
+        </select>
+      </div>
+      
+      <div id="rectangleInputs">
+        <div class="form-group">
+          <label style="display:block;font-size:12px;margin-bottom:4px;">长度 (毫米)</label>
+          <input type="number" id="calcLength" placeholder="0.00" style="width:100%;padding:8px;border:1px solid var(--border-strong);border-radius:6px;background:var(--bg-secondary);color:var(--text);">
+        </div>
+        <div class="form-group">
+          <label style="display:block;font-size:12px;margin-bottom:4px;">宽度 (毫米)</label>
+          <input type="number" id="calcWidth" placeholder="0.00" style="width:100%;padding:8px;border:1px solid var(--border-strong);border-radius:6px;background:var(--bg-secondary);color:var(--text);">
+        </div>
+      </div>
+      
+      <div id="circleInputs" style="display:none;">
+        <div class="form-group">
+          <label style="display:block;font-size:12px;margin-bottom:4px;">输入类型</label>
+          <div style="display:flex;gap:10px;margin-bottom:8px;">
+            <label style="display:flex;align-items:center;gap:4px;font-size:12px;">
+              <input type="radio" name="circleInput" value="radius" checked> 半径
+            </label>
+            <label style="display:flex;align-items:center;gap:4px;font-size:12px;">
+              <input type="radio" name="circleInput" value="diameter"> 直径
+            </label>
+          </div>
+          <input type="number" id="circleValue" placeholder="0.00" style="width:100%;padding:8px;border:1px solid var(--border-strong);border-radius:6px;background:var(--bg-secondary);color:var(--text);">
+        </div>
+      </div>
+      
+      <button id="calcAreaBtn" style="width:100%;padding:10px;background:var(--accent);color:white;border:none;border-radius:6px;margin-top:10px;cursor:pointer;font-weight:600;">计算面积和周长</button>
+      <div id="calcAreaResult" style="margin-top:12px;padding:12px;background:var(--bg-secondary);border-radius:8px;font-size:13px;display:none;color:var(--text);border:1px solid var(--border-strong);">
+        <div class="result-row"><span class="result-label">面积:</span> <span class="result-value" id="areaResult">0</span> mm²</div>
+        <div class="result-row"><span class="result-label">周长:</span> <span class="result-value" id="perimeterResult">0</span> mm</div>
+      </div>
+    </div>
+  `;
+  
+  // 第三个标签页：瓷砖计算
+  tabContents[2].innerHTML = `
+    <div style="margin-bottom: 12px;">
+      <div class="form-group">
+        <label style="display:block;font-size:12px;margin-bottom:4px;">房间面积 (mm²)</label>
+        <input type="number" id="tileRoomArea" placeholder="0.00" style="width:100%;padding:8px;border:1px solid var(--border-strong);border-radius:6px;background:var(--bg-secondary);color:var(--text);">
+      </div>
+      <div class="form-group">
+        <label style="display:block;font-size:12px;margin-bottom:4px;">瓷砖尺寸 (毫米)</label>
+        <div style="display:flex;gap:6px;">
+          <input type="number" id="tileWidth" placeholder="长度" style="flex:1;padding:8px;border:1px solid var(--border-strong);border-radius:6px;background:var(--bg-secondary);color:var(--text);">
+          <input type="number" id="tileHeight" placeholder="宽度" style="flex:1;padding:8px;border:1px solid var(--border-strong);border-radius:6px;background:var(--bg-secondary);color:var(--text);">
+        </div>
+      </div>
+      <div class="form-group">
+        <label style="display:block;font-size:12px;margin-bottom:4px;">缝隙宽度 (毫米，可选)</label>
+        <input type="number" id="tileGap" placeholder="2" style="width:100%;padding:8px;border:1px solid var(--border-strong);border-radius:6px;background:var(--bg-secondary);color:var(--text);">
+      </div>
+      <div class="form-group">
+        <label style="display:block;font-size:12px;margin-bottom:4px;">损耗率 (%)</label>
+        <input type="number" id="tileWaste" placeholder="10" style="width:100%;padding:8px;border:1px solid var(--border-strong);border-radius:6px;background:var(--bg-secondary);color:var(--text);">
+      </div>
+      <button id="calcTileBtn" style="width:100%;padding:10px;background:var(--accent);color:white;border:none;border-radius:6px;margin-top:10px;cursor:pointer;font-weight:600;">计算瓷砖数量</button>
+      <div id="calcTileResult" style="margin-top:12px;padding:12px;background:var(--bg-secondary);border-radius:8px;font-size:13px;display:none;color:var(--text);border:1px solid var(--border-strong);">
+        <div>单块瓷砖面积: <span id="tileArea">0</span> mm²</div>
+        <div>所需瓷砖数量: <span id="tileCount">0</span> 块</div>
+        <div>考虑损耗后: <span id="tileCountWithWaste">0</span> 块</div>
+      </div>
+    </div>
+  `;
+  
+  // 第四个标签页：单位换算
+  tabContents[3].innerHTML = `
+    <div style="margin-bottom: 12px;">
+      <div class="form-group">
+        <label style="display:block;font-size:12px;margin-bottom:4px;">数值</label>
+        <input type="number" id="unitValue" placeholder="0.00" style="width:100%;padding:8px;border:1px solid var(--border-strong);border-radius:6px;background:var(--bg-secondary);color:var(--text);">
+      </div>
+      <div class="form-group">
+        <label style="display:block;font-size:12px;margin-bottom:4px;">从单位</label>
+        <select id="unitFrom" style="width:100%;padding:8px;border:1px solid var(--border-strong);border-radius:6px;background:var(--bg-secondary);color:var(--text);">
+          <option value="m2">平方毫米 (mm²)</option>
+          <option value="cm2">平方厘米 (cm²)</option>
+          <option value="ft2">平方英尺 (ft²)</option>
+          <option value="m">毫米 (mm)</option>
+          <option value="cm">厘米 (cm)</option>
+          <option value="ft">英尺 (ft)</option>
+          <option value="m3">立方毫米 (mm³)</option>
+          <option value="L">升 (L)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label style="display:block;font-size:12px;margin-bottom:4px;">到单位</label>
+        <select id="unitTo" style="width:100%;padding:8px;border:1px solid var(--border-strong);border-radius:6px;background:var(--bg-secondary);color:var(--text);">
+          <option value="m2">平方毫米 (mm²)</option>
+          <option value="cm2">平方厘米 (cm²)</option>
+          <option value="ft2">平方英尺 (ft²)</option>
+          <option value="m">毫米 (mm)</option>
+          <option value="cm">厘米 (cm)</option>
+          <option value="ft">英尺 (ft)</option>
+          <option value="m3">立方毫米 (mm³)</option>
+          <option value="L">升 (L)</option>
+        </select>
+      </div>
+      <button id="convertUnitBtn" style="width:100%;padding:10px;background:var(--accent);color:white;border:none;border-radius:6px;margin-top:10px;cursor:pointer;font-weight:600;">换算</button>
+      <div id="unitResult" style="margin-top:12px;padding:12px;background:var(--bg-secondary);border-radius:8px;font-size:13px;display:none;color:var(--text);border:1px solid var(--border-strong);">
+        结果: <span id="convertedValue">0</span> <span id="unitLabel"></span>
+      </div>
+    </div>
+  `;
+  
+  // 组装窗口
+  content.appendChild(tabs);
+  tabContents.forEach(function(tc) {
+    content.appendChild(tc);
+  });
+  calcWindow.appendChild(header);
+  calcWindow.appendChild(content);
+  document.body.appendChild(calcWindow);
+  
+  // 设置标签页默认样式
+  document.querySelectorAll('.calc-tab')[0].style.borderBottomColor = 'var(--accent)';
+  document.querySelectorAll('.calc-tab')[0].style.color = 'var(--text)';
+  
+  // 基础计算器逻辑
+  var display = document.getElementById('calcDisplay');
+  var calcHistory = document.getElementById('calcHistory');
+  var currentInput = '0';
+  var previousInput = '';
+  var operation = null;
+  var resetScreen = false;
+  var memory = 0;
+  var calculationHistory = '';
+  
+  function updateDisplay() {
+    display.value = currentInput;
+  }
+  
+  function updateHistory(text) {
+    calcHistory.textContent = text;
+  }
+  
+  document.querySelectorAll('.calc-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var op = this.getAttribute('data-op');
+      
+      if ('0123456789.'.includes(op)) {
+        if (currentInput === '0' || resetScreen) {
+          currentInput = op === '.' ? '0.' : op;
+          resetScreen = false;
+        } else {
+          if (op === '.' && currentInput.includes('.')) return;
+          currentInput += op;
+        }
+        updateDisplay();
+      } else if (op === 'clear') {
+        currentInput = '0';
+        previousInput = '';
+        operation = null;
+        calculationHistory = '';
+        updateDisplay();
+        updateHistory('');
+      } else if (op === 'clear-entry') {
+        currentInput = '0';
+        updateDisplay();
+      } else if (op === 'backspace') {
+        currentInput = currentInput.length > 1 ? currentInput.slice(0, -1) : '0';
+        updateDisplay();
+      } else if (op === 'percent') {
+        var val = parseFloat(currentInput);
+        currentInput = (val / 100).toString();
+        updateDisplay();
+      } else if (op === 'square') {
+        var val = parseFloat(currentInput);
+        currentInput = (val * val).toString();
+        updateDisplay();
+      } else if (op === 'square-root') {
+        var val = parseFloat(currentInput);
+        currentInput = Math.sqrt(val).toString();
+        updateDisplay();
+      } else if (op === 'reciprocal') {
+        var val = parseFloat(currentInput);
+        currentInput = (1 / val).toString();
+        updateDisplay();
+      } else if (op === 'sign') {
+        var val = parseFloat(currentInput);
+        currentInput = (-val).toString();
+        updateDisplay();
+      } else if (op === 'memory-clear') {
+        memory = 0;
+      } else if (op === 'memory-recall') {
+        currentInput = memory.toString();
+        resetScreen = true;
+        updateDisplay();
+      } else if (op === 'memory-add') {
+        memory += parseFloat(currentInput);
+      } else if (op === 'memory-subtract') {
+        memory -= parseFloat(currentInput);
+      } else if (['+', '-', '*', '/'].includes(op)) {
+        if (previousInput !== '') {
+          calculate();
+        }
+        previousInput = currentInput;
+        operation = op;
+        calculationHistory = currentInput + (op === '*' ? ' × ' : (op === '/' ? ' / ' : (op === '-' ? ' - ' : ' + ')));
+        updateHistory(calculationHistory);
+        resetScreen = true;
+      } else if (op === 'equals') {
+        if (previousInput !== '' && operation !== null) {
+          calculationHistory = previousInput + (operation === '*' ? ' × ' : (operation === '/' ? ' / ' : (operation === '-' ? ' - ' : ' + '))) + currentInput + ' =';
+          calculate();
+          updateHistory(calculationHistory);
+          previousInput = '';
+          operation = null;
+        }
+      }
+    });
+  });
+  
+  function calculate() {
+    var prev = parseFloat(previousInput);
+    var current = parseFloat(currentInput);
+    if (isNaN(prev) || isNaN(current)) return;
+    
+    switch (operation) {
+      case '+': currentInput = (prev + current).toString(); break;
+      case '-': currentInput = (prev - current).toString(); break;
+      case '*': currentInput = (prev * current).toString(); break;
+      case '/': currentInput = (prev / current).toString(); break;
+    }
+    updateDisplay();
+    resetScreen = true;
+  }
+  
+  // 键盘事件支持
+  document.addEventListener('keydown', function(e) {
+    // 仅当计算器窗口可见时处理键盘事件
+    var calcWindow = document.getElementById('aiCalculatorWindow');
+    if (!calcWindow || calcWindow.style.display === 'none') return;
+    
+    var key = e.key;
+    
+    // 数字键 0-9
+    if (/^\d$/.test(key)) {
+      e.preventDefault();
+      if (currentInput === '0' || resetScreen) {
+        currentInput = key;
+        resetScreen = false;
+      } else {
+        currentInput += key;
+      }
+      updateDisplay();
+    }
+    // 小数点
+    else if (key === '.' || key === 'Decimal') {
+      e.preventDefault();
+      if (currentInput.includes('.')) return;
+      if (currentInput === '0' || resetScreen) {
+        currentInput = '0.';
+        resetScreen = false;
+      } else {
+        currentInput += '.';
+      }
+      updateDisplay();
+    }
+    // 操作符
+    else if (key === '+' || key === '-' || key === '*' || key === '/') {
+      e.preventDefault();
+      if (previousInput !== '') {
+        calculate();
+      }
+      previousInput = currentInput;
+      operation = key;
+      resetScreen = true;
+    }
+    // 等于或回车
+    else if (key === '=' || key === 'Enter') {
+      e.preventDefault();
+      if (previousInput !== '' && operation !== null) {
+        calculate();
+        previousInput = '';
+        operation = null;
+      }
+    }
+    // 清除键 (Esc 或 Delete)
+    else if (key === 'Escape' || key === 'Delete' || key === 'Clear') {
+      e.preventDefault();
+      currentInput = '0';
+      previousInput = '';
+      operation = null;
+      updateDisplay();
+    }
+    // 退格键
+    else if (key === 'Backspace') {
+      e.preventDefault();
+      currentInput = currentInput.length > 1 ? currentInput.slice(0, -1) : '0';
+      updateDisplay();
+    }
+  });
+
+  // 形状类型切换逻辑
+  document.getElementById('calcShapeType').addEventListener('change', function() {
+    var shapeType = this.value;
+    if (shapeType === 'rectangle') {
+      document.getElementById('rectangleInputs').style.display = 'block';
+      document.getElementById('circleInputs').style.display = 'none';
+    } else {
+      document.getElementById('rectangleInputs').style.display = 'none';
+      document.getElementById('circleInputs').style.display = 'block';
+    }
+  });
+
+  // 面积计算逻辑
+  document.getElementById('calcAreaBtn').addEventListener('click', function() {
+    var shapeType = document.getElementById('calcShapeType').value;
+    var area = 0;
+    var perimeter = 0;
+    
+    if (shapeType === 'rectangle') {
+      var length = parseFloat(document.getElementById('calcLength').value) || 0;
+      var width = parseFloat(document.getElementById('calcWidth').value) || 0;
+      
+      if (length <= 0 || width <= 0) {
+        showToast('请输入有效的长度和宽度');
+        return;
+      }
+      
+      area = length * width; // 平方毫米
+      perimeter = 2 * (length + width); // 毫米
+    } else {
+      // 圆形计算
+      var circleValue = parseFloat(document.getElementById('circleValue').value) || 0;
+      var inputType = document.querySelector('input[name="circleInput"]:checked').value;
+      
+      if (circleValue <= 0) {
+        showToast('请输入有效的半径或直径');
+        return;
+      }
+      
+      var radius = inputType === 'radius' ? circleValue : circleValue / 2;
+      area = Math.PI * radius * radius; // 平方毫米
+      perimeter = 2 * Math.PI * radius; // 毫米
+    }
+    
+    document.getElementById('areaResult').textContent = area.toFixed(2);
+    document.getElementById('perimeterResult').textContent = perimeter.toFixed(2);
+    document.getElementById('calcAreaResult').style.display = 'block';
+  });
+  
+  // 瓷砖计算逻辑
+  document.getElementById('calcTileBtn').addEventListener('click', function() {
+    var roomArea = parseFloat(document.getElementById('tileRoomArea').value) || 0;
+    var tileWidth = parseFloat(document.getElementById('tileWidth').value) || 0;
+    var tileHeight = parseFloat(document.getElementById('tileHeight').value) || 0;
+    var gap = parseFloat(document.getElementById('tileGap').value) || 2;
+    var waste = parseFloat(document.getElementById('tileWaste').value) || 10;
+    
+    if (roomArea <= 0 || tileWidth <= 0 || tileHeight <= 0) {
+      showToast('请输入有效的房间面积和瓷砖尺寸');
+      return;
+    }
+    
+    // 所有单位已经是毫米，直接计算
+    // 单块瓷砖面积（包括缝隙），单位：平方毫米
+    var tileArea = (tileWidth + gap) * (tileHeight + gap);
+    var tileCount = roomArea / tileArea;
+    var tileCountWithWaste = tileCount * (1 + waste / 100);
+    
+    document.getElementById('tileArea').textContent = tileArea.toFixed(2);
+    document.getElementById('tileCount').textContent = Math.ceil(tileCount);
+    document.getElementById('tileCountWithWaste').textContent = Math.ceil(tileCountWithWaste);
+    document.getElementById('calcTileResult').style.display = 'block';
+  });
+  
+  // 单位换算逻辑
+  document.getElementById('convertUnitBtn').addEventListener('click', function() {
+    var value = parseFloat(document.getElementById('unitValue').value) || 0;
+    var from = document.getElementById('unitFrom').value;
+    var to = document.getElementById('unitTo').value;
+    
+    var conversionRates = {
+      // 面积
+      'm2': { m2: 1, cm2: 0.01, ft2: 0.0000107639 }, // 1 mm² = 0.01 cm² = 0.0000107639 ft²
+      'cm2': { m2: 100, cm2: 1, ft2: 0.00107639 }, // 1 cm² = 100 mm²
+      'ft2': { m2: 92903.04, cm2: 929.0304, ft2: 1 }, // 1 ft² = 92903.04 mm²
+      // 长度
+      'm': { m: 1, cm: 0.1, ft: 0.00328084 }, // 1 mm = 0.1 cm = 0.00328084 ft
+      'cm': { m: 10, cm: 1, ft: 0.0328084 }, // 1 cm = 10 mm
+      'ft': { m: 304.8, cm: 30.48, ft: 1 }, // 1 ft = 304.8 mm
+      // 体积
+      'm3': { m3: 1, L: 0.000001 }, // 1 mm³ = 0.000001 L
+      'L': { m3: 1000000, L: 1 } // 1 L = 1,000,000 mm³
+    };
+    
+    if (conversionRates[from] && conversionRates[from][to]) {
+      var converted = value * conversionRates[from][to];
+      document.getElementById('convertedValue').textContent = converted.toFixed(4);
+      document.getElementById('unitLabel').textContent = document.querySelector('#unitTo option:checked').textContent;
+      document.getElementById('unitResult').style.display = 'block';
+    } else {
+      showToast('不支持的单位换算组合');
+    }
+  });
+  
+  // 窗口控制
+  var isDragging = false;
+  var dragOffset = { x: 0, y: 0 };
+  
+  header.addEventListener('mousedown', function(e) {
+    if (e.target.classList.contains('calc-btn-minimize') || e.target.classList.contains('calc-btn-close')) return;
+    
+    isDragging = true;
+    var rect = calcWindow.getBoundingClientRect();
+    dragOffset.x = e.clientX - rect.left;
+    dragOffset.y = e.clientY - rect.top;
+    calcWindow.style.cursor = 'move';
+  });
+  
+  document.addEventListener('mousemove', function(e) {
+    if (!isDragging) return;
+    
+    calcWindow.style.left = (e.clientX - dragOffset.x) + 'px';
+    calcWindow.style.top = (e.clientY - dragOffset.y) + 'px';
+    calcWindow.style.right = 'auto';
+  });
+  
+  document.addEventListener('mouseup', function() {
+    isDragging = false;
+    calcWindow.style.cursor = 'default';
+  });
+  
+  // 最小化和关闭按钮
+  document.querySelector('.calc-btn-minimize').addEventListener('click', function() {
+    content.style.display = content.style.display === 'none' ? 'block' : 'none';
+  });
+  
+  document.querySelector('.calc-btn-close').addEventListener('click', function() {
+    calcWindow.style.display = 'none';
+  });
+}
+
+// 添加计算器按钮到页面
+function addCalculatorButton() {
+  if (document.getElementById('calculatorFloatingBtn')) return;
+  
+  var btn = document.createElement('button');
+  btn.id = 'calculatorFloatingBtn';
+  btn.innerHTML = '🧮';
+  btn.title = 'AI 计算器 (可拖拽移动)';
+  btn.style.cssText = `
+    position: fixed;
+    bottom: 80px;
+    right: 20px;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: white;
+    border: none;
+    box-shadow: var(--shadow);
+    font-size: 22px;
+    cursor: grab;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+  `;
+  btn.addEventListener('click', showAICalculator);
+  
+  // 添加拖拽功能
+  var isDragging = false;
+  var currentX;
+  var currentY;
+  var initialX;
+  var initialY;
+  var xOffset = 0;
+  var yOffset = 0;
+  
+  btn.addEventListener('mousedown', dragStart);
+  document.addEventListener('mousemove', drag);
+  document.addEventListener('mouseup', dragEnd);
+  
+  function dragStart(e) {
+    if (e.button !== 0) return; // 只响应左键
+    
+    initialX = e.clientX - xOffset;
+    initialY = e.clientY - yOffset;
+    
+    if (e.target === btn) {
+      isDragging = true;
+      btn.style.cursor = 'grabbing';
+    }
+  }
+  
+  function drag(e) {
+    if (isDragging) {
+      e.preventDefault();
+      
+      currentX = e.clientX - initialX;
+      currentY = e.clientY - initialY;
+      
+      xOffset = currentX;
+      yOffset = currentY;
+      
+      setTranslate(currentX, currentY, btn);
+    }
+  }
+  
+  function setTranslate(xPos, yPos, el) {
+    // 确保按钮不会移出视窗外
+    var maxX = window.innerWidth - el.offsetWidth;
+    var maxY = window.innerHeight - el.offsetHeight;
+    
+    xPos = Math.max(0, Math.min(xPos, maxX));
+    yPos = Math.max(0, Math.min(yPos, maxY));
+    
+    el.style.transform = `translate3d(${xPos}px, ${yPos}px, 0)`;
+    el.style.bottom = 'auto';
+    el.style.right = 'auto';
+    el.style.left = '0';
+    el.style.top = '0';
+  }
+  
+  function dragEnd() {
+    if (isDragging) {
+      isDragging = false;
+      btn.style.cursor = 'grab';
+    }
+  }
+  
+  document.body.appendChild(btn);
+}
+
+// 页面加载后添加计算器按钮
+setTimeout(addCalculatorButton, 1000);
 setInterval(function(){if(S.currentFileId){var f=S.files.find(function(x){return x.id===S.currentFileId});if(!f)return;f.updatedAt=Date.now();if(f.type==='quotation')f.data={customerInfo:S.customerInfo,rooms:S.rooms,quoteItems:S.quoteItems,productQuoteItems:S.productQuoteItems,customNotes:S.customNotes};else f.data={projectName:S.msProjectName,customerInfo:S.msCustomerInfo,rooms:S.msRooms};saveFilesToStorage()}},30000);

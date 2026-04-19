@@ -1,32 +1,80 @@
 // 导出模块
 function exportPDF(version) {
+  if (typeof License !== 'undefined') {
+    var restriction = License.checkFeatureRestriction('export_pdf');
+    if (!restriction.allowed) {
+      showToast(restriction.message || '功能受限');
+      License.showPurchaseModal();
+      return;
+    }
+  }
+  
   if (!S.currentFileId) {
     showToast('请先打开报价文件');
     return;
   }
+  
   var ci = S.customerInfo;
   var labels = { luxury: '奢享全案', premium: '优享精造' };
   var totals = calcQuoteTotal();
-  var el = document.createElement('div');
-  el.style.cssText = 'position:absolute;left:-9999px;top:0;padding:0;margin:0;font-family:"Microsoft YaHei",sans-serif;color:#222;background:#fff;width:794px';
+  
+  var overlay = document.createElement('div');
+  overlay.id = 'pdf-overlay';
+  overlay.style.cssText = 'position:fixed;left:0;top:0;right:0;bottom:0;background:#fff;z-index:999999;display:flex;justify-content:center;align-items:flex-start;padding-top:20px;overflow:auto;';
+  
+  var container = document.createElement('div');
+  container.id = 'pdf-export-container';
+  var isDetailed = version !== 'simple';
+  var pageW = isDetailed ? 1122 : 794;
+  container.style.cssText = 'width:'+pageW+'px;background:#fff;padding:0;margin:0;font-family:"Microsoft YaHei",sans-serif;color:#222;box-sizing:border-box;';
+  
+  var contentHTML;
   if (version === 'simple') {
-    el.innerHTML = simpleExportHTML(ci, labels, totals);
+    contentHTML = simpleExportHTML(ci, labels, totals);
   } else {
-    el.innerHTML = detailedExportHTML(ci, labels, totals);
+    contentHTML = detailedExportHTML(ci, labels, totals);
   }
-  document.body.appendChild(el);
-  html2pdf().set({
-    margin: [8, 5, 8, 5],
-    filename: '报价单-' + (version === 'simple' ? '简约' : '详细') + '版.pdf',
-    image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 2, useCORS: true, logging: false, width: 794, windowWidth: 794 },
-    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-  }).from(el).save().then(function() {
-    document.body.removeChild(el);
-  }).catch(function(e) {
-    console.error(e);
-    document.body.removeChild(el);
-  });
+  
+  container.innerHTML = contentHTML;
+  overlay.appendChild(container);
+  document.body.appendChild(overlay);
+  
+  showToast('正在生成PDF，请稍候...');
+  
+  setTimeout(function() {
+    try {
+      var opt = {
+        margin: [6, 4, 6, 4],
+        filename: '报价单-' + (version === 'simple' ? '简约' : '合同') + '版.pdf',
+        image: { type: 'jpeg', quality: 1 },
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#ffffff',
+          allowTaint: true,
+          logging: false
+        },
+        jsPDF: {
+          unit: 'mm',
+          format: 'a4',
+          orientation: isDetailed ? 'landscape' : 'portrait'
+        }
+      };
+      
+      html2pdf().set(opt).from(container).save().then(function() {
+        if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+        showToast('PDF导出成功！');
+      }).catch(function(error) {
+        console.error('html2pdf错误:', error);
+        if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+        showToast('PDF导出失败，请重试');
+      });
+    } catch (e) {
+      console.error('PDF导出异常:', e);
+      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      showToast('PDF导出异常，请重试');
+    }
+  }, 500);
 }
 
 function printQuote(version) {
@@ -76,7 +124,7 @@ function exportSimpleTable() {
   var floors = Object.keys(fg).sort(function(a, b) {
     return floorSortKey(a) - floorSortKey(b);
   });
-  var h = '<table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:10px;table-layout:auto"><thead><tr style="border-bottom:2px solid #bbb"><th style="padding:6px 4px;text-align:center;width:32px">序号</th><th style="padding:6px 4px;text-align:center">项目</th><th style="padding:6px 4px;text-align:center;white-space:nowrap;min-width:80px">金额</th></tr></thead><tbody>';
+  var h = '<table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:10px;table-layout:auto"><thead><tr style="border-bottom:2px solid #bbb"><th style="padding:6px 4px;text-align:center;width:40px">序号</th><th style="padding:6px 4px;text-align:left">项目</th><th style="padding:6px 4px;text-align:center;white-space:nowrap;min-width:100px">金额</th></tr></thead><tbody>';
   floors.forEach(function(fl) {
     var rooms = fg[fl];
     var fi = items.filter(function(q) {
@@ -99,7 +147,7 @@ function exportSimpleTable() {
       }, 0);
       h += '<tr><td colspan="3" style="padding:5px 4px 5px 16px;font-weight:600;border-bottom:1px solid #f0f0f0">📍 ' + esc(room.name) + '<span style="float:right;white-space:nowrap">¥' + fmt(rT) + '</span></td></tr>';
       ri.forEach(function(qi) {
-        h += '<tr style="border-bottom:1px solid #f0f0f0"><td style="padding:4px;text-align:center">' + seq + '</td><td style="padding:4px">' + esc(qi.name) + '</td><td style="padding:4px;text-align:center;font-weight:500;white-space:nowrap">¥' + fmt(qi.quantity * qi.unitPrice) + '</td></tr>';
+        h += '<tr style="border-bottom:1px solid #f0f0f0"><td style="padding:5px;text-align:center">' + seq + '</td><td style="padding:5px;text-align:left;word-wrap:break-word;word-break:break-all">' + esc(qi.name) + '</td><td style="padding:5px;text-align:center;font-weight:500;white-space:nowrap">¥' + fmt(qi.quantity * qi.unitPrice) + '</td></tr>';
         seq++;
       });
     });
@@ -113,7 +161,7 @@ function exportSimpleTable() {
     }, 0);
     h += '<tr><td colspan="3" style="padding:7px 4px;font-weight:600;font-size:12px;border-bottom:1px solid #e0e0e0">⚡ 水电暖气下水<span style="float:right;white-space:nowrap">¥' + fmt(uT) + '</span></td></tr>';
     ui.forEach(function(q) {
-      h += '<tr style="border-bottom:1px solid #f0f0f0"><td style="padding:4px;text-align:center">' + seq + '</td><td style="padding:4px">' + esc(q.name) + '</td><td style="padding:4px;text-align:center;font-weight:500;white-space:nowrap">¥' + fmt(q.quantity * q.unitPrice) + '</td></tr>';
+      h += '<tr style="border-bottom:1px solid #f0f0f0"><td style="padding:5px;text-align:center">' + seq + '</td><td style="padding:5px;text-align:left;word-wrap:break-word;word-break:break-all">' + esc(q.name) + '</td><td style="padding:5px;text-align:center;font-weight:500;white-space:nowrap">¥' + fmt(q.quantity * q.unitPrice) + '</td></tr>';
       seq++;
     });
   }
@@ -123,7 +171,7 @@ function exportSimpleTable() {
   if (citems.length) {
     h += '<tr><td colspan="3" style="padding:7px 4px;font-weight:600;font-size:12px;border-bottom:1px solid #e0e0e0">📝 自定义</td></tr>';
     citems.forEach(function(q) {
-      h += '<tr style="border-bottom:1px solid #f0f0f0"><td style="padding:4px;text-align:center">' + seq + '</td><td style="padding:4px">' + esc(q.name) + '</td><td style="padding:4px;text-align:center;font-weight:500;white-space:nowrap">¥' + fmt(q.quantity * q.unitPrice) + '</td></tr>';
+      h += '<tr style="border-bottom:1px solid #f0f0f0"><td style="padding:5px;text-align:center">' + seq + '</td><td style="padding:5px;text-align:left;word-wrap:break-word;word-break:break-all">' + esc(q.name) + '</td><td style="padding:5px;text-align:center;font-weight:500;white-space:nowrap">¥' + fmt(q.quantity * q.unitPrice) + '</td></tr>';
       seq++;
     });
   }
@@ -142,7 +190,7 @@ function exportSimpleTable() {
       }, 0);
       h += '<tr><td colspan="3" style="padding:7px 4px;font-weight:600;font-size:12px;border-bottom:1px solid #e0e0e0">' + mc.icon + ' ' + mc.name + '<span style="float:right;white-space:nowrap">¥' + fmt(pT) + '</span></td></tr>';
       pi.forEach(function(q) {
-        h += '<tr style="border-bottom:1px solid #f0f0f0"><td style="padding:4px;text-align:center">' + seq + '</td><td style="padding:4px">' + esc(q.name) + '</td><td style="padding:4px;text-align:center;font-weight:500;white-space:nowrap">¥' + fmt(q.quantity * q.unitPrice) + '</td></tr>';
+        h += '<tr style="border-bottom:1px solid #f0f0f0"><td style="padding:5px;text-align:center">' + seq + '</td><td style="padding:5px;text-align:left;word-wrap:break-word;word-break:break-all">' + esc(q.name) + '</td><td style="padding:5px;text-align:center;font-weight:500;white-space:nowrap">¥' + fmt(q.quantity * q.unitPrice) + '</td></tr>';
         seq++;
       });
     });
@@ -152,6 +200,18 @@ function exportSimpleTable() {
 }
 
 function exportDetailedTable() {
+  var fixedCols = {num: 24, name: 100, qty: 24, unit: 24, price: 24, amount: 100, desc: 180, action: 24};
+  var cw = S.colWidths || {};
+  Object.keys(fixedCols).forEach(function(k) { if (!cw[k]) cw[k] = fixedCols[k]; });
+  var totalW = (cw.num || 24) + (cw.name || 100) + (cw.qty || 24) + (cw.unit || 24) + (cw.price || 24) + (cw.amount || 100) + (cw.desc || 180);
+  var pNum = ((cw.num || 24) / totalW * 100).toFixed(2);
+  var pName = ((cw.name || 100) / totalW * 100).toFixed(2);
+  var pQty = ((cw.qty || 24) / totalW * 100).toFixed(2);
+  var pUnit = ((cw.unit || 24) / totalW * 100).toFixed(2);
+  var pPrice = ((cw.price || 24) / totalW * 100).toFixed(2);
+  var pAmount = ((cw.amount || 100) / totalW * 100).toFixed(2);
+  var pDesc = ((cw.desc || 180) / totalW * 100).toFixed(2);
+
   var items = S.quoteItems.concat(S.productQuoteItems);
   var seq = 1;
   var fg = {};
@@ -163,9 +223,9 @@ function exportDetailedTable() {
   var floors = Object.keys(fg).sort(function(a, b) {
     return floorSortKey(a) - floorSortKey(b);
   });
-  var h = '<table style="width:100%;border-collapse:collapse;font-size:10px;margin-top:10px;table-layout:fixed"><colgroup><col style="width:32px"><col><col style="width:42px"><col style="width:36px"><col style="width:60px"><col style="width:70px"><col></colgroup><thead><tr style="border-bottom:2px solid #bbb"><th style="padding:5px 3px;text-align:center">序号</th><th style="padding:5px 3px;text-align:center">项目</th><th style="padding:5px 3px;text-align:center">数量</th><th style="padding:5px 3px;text-align:center">单位</th><th style="padding:5px 3px;text-align:center">单价</th><th style="padding:5px 3px;text-align:center">金额</th><th style="padding:5px 3px;text-align:center">说明</th></tr></thead><tbody>';
+  var h = '<table style="width:100%;border-collapse:collapse;font-size:10px;margin-top:10px;table-layout:fixed"><colgroup><col style="width:'+pNum+'%"><col style="width:'+pName+'%"><col style="width:'+pQty+'%"><col style="width:'+pUnit+'%"><col style="width:'+pPrice+'%"><col style="width:'+pAmount+'%"><col style="width:'+pDesc+'%"></colgroup><thead><tr style="border-bottom:2px solid #bbb"><th style="padding:6px 4px;text-align:center">序号</th><th style="padding:6px 4px;text-align:center">项目</th><th style="padding:6px 4px;text-align:center">数量</th><th style="padding:6px 4px;text-align:center">单位</th><th style="padding:6px 4px;text-align:center">单价</th><th style="padding:6px 4px;text-align:center">金额</th><th style="padding:6px 4px;text-align:center">说明</th></tr></thead><tbody>';
   function dRow(qi, s) {
-    return '<tr style="border-bottom:1px solid #f0f0f0"><td style="padding:3px 2px;text-align:center">' + s + '</td><td style="padding:3px 2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(qi.name) + '</td><td style="padding:3px 2px;text-align:center">' + qi.quantity + '</td><td style="padding:3px 2px;text-align:center">' + esc(qi.unit) + '</td><td style="padding:3px 2px;text-align:center;white-space:nowrap">¥' + fmt(qi.unitPrice) + '</td><td style="padding:3px 2px;text-align:center;font-weight:600;white-space:nowrap">¥' + fmt(qi.quantity * qi.unitPrice) + '</td><td style="padding:3px 2px;color:#666;font-size:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(qi.description || '') + '</td></tr>';
+    return '<tr style="border-bottom:1px solid #f0f0f0"><td style="padding:4px 3px;text-align:center">'+s+'</td><td style="padding:4px 3px;text-align:left;word-wrap:break-word;word-break:break-all">'+esc(qi.name)+'</td><td style="padding:4px 3px;text-align:center">'+qi.quantity+'</td><td style="padding:4px 3px;text-align:center">'+esc(qi.unit)+'</td><td style="padding:4px 3px;text-align:center;white-space:nowrap">¥'+fmt(qi.unitPrice)+'</td><td style="padding:4px 3px;text-align:center;font-weight:600;white-space:nowrap">¥'+fmt(qi.quantity*qi.unitPrice)+'</td><td style="padding:4px 3px;color:#666;font-size:9px;text-align:left;word-wrap:break-word;word-break:break-all">'+esc(qi.description||'')+'</td></tr>';
   }
   floors.forEach(function(fl) {
     var rooms = fg[fl];
@@ -178,7 +238,7 @@ function exportDetailedTable() {
     var fT = fi.reduce(function(s, q) {
       return s + q.quantity * q.unitPrice;
     }, 0);
-    h += '<tr><td colspan="5" style="padding:6px 3px;font-weight:600;font-size:11px;border-bottom:1px solid #e0e0e0">🏗️ ' + esc(fl) + '</td><td></td><td style="text-align:right;font-weight:600;white-space:nowrap">¥' + fmt(fT) + '</td></tr>';
+    h += '<tr><td colspan="5" style="padding:6px 3px;font-weight:600;font-size:11px;border-bottom:1px solid #e0e0e0">🏗️ '+esc(fl)+'</td><td></td><td style="text-align:right;font-weight:600;white-space:nowrap">¥'+fmt(fT)+'</td></tr>';
     rooms.forEach(function(room) {
       var ri = fi.filter(function(q) {
         return q.roomId === room.id;
@@ -187,7 +247,7 @@ function exportDetailedTable() {
       var rT = ri.reduce(function(s, q) {
         return s + q.quantity * q.unitPrice;
       }, 0);
-      h += '<tr><td colspan="5" style="padding:4px 3px 4px 14px;font-weight:600;border-bottom:1px solid #f0f0f0">📍 ' + esc(room.name) + '</td><td></td><td style="text-align:right;font-weight:600;white-space:nowrap">¥' + fmt(rT) + '</td></tr>';
+      h += '<tr><td colspan="5" style="padding:4px 3px 4px 14px;font-weight:600;border-bottom:1px solid #f0f0f0">📍 '+esc(room.name)+'</td><td></td><td style="text-align:right;font-weight:600;white-space:nowrap">¥'+fmt(rT)+'</td></tr>';
       ri.forEach(function(qi) {
         h += dRow(qi, seq++);
       });
@@ -200,7 +260,7 @@ function exportDetailedTable() {
     var uT = ui.reduce(function(s, q) {
       return s + q.quantity * q.unitPrice;
     }, 0);
-    h += '<tr><td colspan="7" style="padding:6px 3px;font-weight:600;font-size:11px;border-bottom:1px solid #e0e0e0">⚡ 水电暖气下水<span style="float:right;white-space:nowrap">¥' + fmt(uT) + '</span></td></tr>';
+    h += '<tr><td colspan="7" style="padding:6px 3px;font-weight:600;font-size:11px;border-bottom:1px solid #e0e0e0">⚡ 水电暖气下水<span style="float:right;white-space:nowrap">¥'+fmt(uT)+'</span></td></tr>';
     ui.forEach(function(q) {
       h += dRow(q, seq++);
     });
@@ -227,7 +287,7 @@ function exportDetailedTable() {
       var pT = pi.reduce(function(s, q) {
         return s + q.quantity * q.unitPrice;
       }, 0);
-      h += '<tr><td colspan="7" style="padding:6px 3px;font-weight:600;font-size:11px;border-bottom:1px solid #e0e0e0">' + mc.icon + ' ' + mc.name + '<span style="float:right;white-space:nowrap">¥' + fmt(pT) + '</span></td></tr>';
+      h += '<tr><td colspan="7" style="padding:6px 3px;font-weight:600;font-size:11px;border-bottom:1px solid #e0e0e0">'+mc.icon+' '+mc.name+'<span style="float:right;white-space:nowrap">¥'+fmt(pT)+'</span></td></tr>';
       pi.forEach(function(q) {
         h += dRow(q, seq++);
       });
@@ -249,6 +309,16 @@ function getSubCatLabel(mcId, scId) {
 }
 
 function exportExcel() {
+  // 检查许可证限制
+  if (typeof License !== 'undefined') {
+    var restriction = License.checkFeatureRestriction('export_excel');
+    if (!restriction.allowed) {
+      showToast(restriction.message || '功能受限');
+      License.showPurchaseModal();
+      return;
+    }
+  }
+  
   if (!S.currentFileId) {
     showToast('请先打开报价文件');
     return;

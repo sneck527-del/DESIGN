@@ -8,18 +8,26 @@ function loadState() {
     var s = localStorage.getItem('dq_settings');
     if (s) {
       var d = JSON.parse(s);
-      // 解密敏感字段（如果加密模块可用）
       if (typeof Encryption !== 'undefined') {
         d = Encryption.decryptSensitiveFields(d);
       }
       Object.keys(d).forEach(function(k) {
-        S[k] = d[k];
+        if (k !== 'materials') S[k] = d[k];
       });
     }
+    var m = localStorage.getItem('dq_materials');
+    if (m) S.materials = JSON.parse(m);
     var p = localStorage.getItem('dq_products');
     if (p) S.products = JSON.parse(p);
+    var br = localStorage.getItem('dq_branding');
+    if (br) {
+      var bd = JSON.parse(br);
+      if (bd.logo) S.logo = bd.logo;
+      if (bd.systemName) S.systemName = bd.systemName;
+    }
     loadTemplatesFromStorage();
     migrateOldData();
+    migrateMaterialsToSeparate();
     initDefaults();
   } catch (e) {
     console.error(e);
@@ -39,9 +47,14 @@ function saveSettings() {
       watermarkEnabled: S.watermarkEnabled,
       watermarkText: S.watermarkText,
       colWidths: S.colWidths,
-      materials: S.materials,
+      fontSizes: S.fontSizes,
+      rowHeight: S.rowHeight,
       spaceTypes: S.spaceTypes,
       bossPassword: S.bossPassword,
+      licenseKey: S.licenseKey,
+      licenseStatus: S.licenseStatus,
+      trialStartDate: S.trialStartDate,
+      licenseType: S.licenseType,
       costRates: S.costRates,
       ollamaUrl: S.ollamaUrl,
       ollamaModel: S.ollamaModel,
@@ -52,13 +65,50 @@ function saveSettings() {
       aiOptimizeProductPrompt: S.aiOptimizeProductPrompt
     };
     
-    // 加密敏感字段（如果加密模块可用）
     if (typeof Encryption !== 'undefined') {
       settings = Encryption.encryptSensitiveFields(settings);
     }
     
     localStorage.setItem('dq_settings', JSON.stringify(settings));
   } catch (e) {}
+}
+
+function saveMaterialsToStorage() {
+  try {
+    localStorage.setItem('dq_materials', JSON.stringify(S.materials));
+  } catch (e) {
+    showToast('材料库存储空间不足');
+  }
+}
+
+function saveBrandingToStorage() {
+  try {
+    localStorage.setItem('dq_branding', JSON.stringify({
+      logo: S.logo || '',
+      systemName: S.systemName || ''
+    }));
+  } catch (e) {}
+}
+
+function applyBranding() {
+  var logo = S.logo || (typeof LOGO_BASE64 === 'string' ? LOGO_BASE64 : '');
+  var name = S.systemName || '斑马丨精装报价系统';
+  var headerLogo = document.getElementById('headerLogo');
+  var welcomeLogo = document.getElementById('welcomeLogo');
+  if (headerLogo) headerLogo.src = logo;
+  if (welcomeLogo) welcomeLogo.src = logo;
+  var titleEl = document.querySelector('.app-header h1 span:last-child');
+  if (titleEl) {
+    var parts = name.split('|');
+    if (parts.length === 2) {
+      titleEl.innerHTML = parts[0] + '<span style="color:var(--accent)">' + parts[1] + '</span>';
+    } else {
+      titleEl.textContent = name;
+    }
+  }
+  var welcomeH2 = document.querySelector('.welcome-content h2');
+  if (welcomeH2) welcomeH2.textContent = name;
+  document.title = name;
 }
 
 function saveFilesToStorage() {
@@ -101,6 +151,27 @@ function migrateOldData() {
         saveFilesToStorage();
         localStorage.removeItem('decorationQuoteV3');
       }
+    }
+  } catch (e) {}
+}
+
+function migrateMaterialsToSeparate() {
+  try {
+    var existing = localStorage.getItem('dq_materials');
+    if (existing) return;
+    var s = localStorage.getItem('dq_settings');
+    if (!s) return;
+    var d = JSON.parse(s);
+    if (typeof Encryption !== 'undefined') {
+      d = Encryption.decryptSensitiveFields(d);
+    }
+    if (d.materials) {
+      localStorage.setItem('dq_materials', JSON.stringify(d.materials));
+      delete d.materials;
+      if (typeof Encryption !== 'undefined') {
+        d = Encryption.encryptSensitiveFields(d);
+      }
+      localStorage.setItem('dq_settings', JSON.stringify(d));
     }
   } catch (e) {}
 }

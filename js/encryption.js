@@ -54,10 +54,13 @@ var Encryption = {
     var encrypted = Object.assign({}, settings);
     
     // 需要加密的字段
-    var sensitiveFields = [
-      'bossPassword',
-      'aiApiKey'
-    ];
+  var sensitiveFields = [
+    'bossPassword',
+    'aiApiKey',
+    'licenseKey',
+    'aiOptimizeConstructionPrompt',
+    'aiOptimizeProductPrompt'
+  ];
     
     sensitiveFields.forEach(function(field) {
       if (encrypted[field] && typeof encrypted[field] === 'string') {
@@ -73,10 +76,13 @@ var Encryption = {
     var decrypted = Object.assign({}, settings);
     
     // 需要解密的字段
-    var sensitiveFields = [
-      'bossPassword',
-      'aiApiKey'
-    ];
+  var sensitiveFields = [
+    'bossPassword',
+    'aiApiKey',
+    'licenseKey',
+    'aiOptimizeConstructionPrompt',
+    'aiOptimizeProductPrompt'
+  ];
     
     sensitiveFields.forEach(function(field) {
       if (decrypted[field] && typeof decrypted[field] === 'string') {

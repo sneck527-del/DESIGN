@@ -7,8 +7,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 <style>
-:root{--font-family:"Microsoft YaHei","PingFang SC",-apple-system,sans-serif;--primary:#e2e8f0;--primary-light:#cbd5e1;--accent:#3b82f6;--accent-light:#60a5fa;--accent-dim:rgba(59,130,246,0.12);--success:#10b981;--warning:#f59e0b;--danger:#ef4444;--bg:#0f172a;--bg-secondary:#1e293b;--card:#1e293b;--card-hover:#253349;--text:#e2e8f0;--text-light:#94a3b8;--text-dim:#64748b;--border:rgba(148,163,184,0.1);--border-strong:rgba(148,163,184,0.2);--input-bg:#0f172a;--hover-bg:rgba(59,130,246,0.06);--cat-bg:rgba(59,130,246,0.08);--sub-bg:rgba(30,41,59,0.6);--shadow:0 4px 24px rgba(0,0,0,0.3);--radius:12px;--radius-sm:8px;--header-bg:#0f172a;--th-bg:rgba(30,41,59,0.8);--th-color:#94a3b8;--total-bg:linear-gradient(135deg,#1e40af,#3b82f6);--total-color:#fff;--sidebar-bg:#0c1322;--sidebar-text:#94a3b8;--sidebar-hover:#1e293b;--sidebar-active:#3b82f6;--sidebar-width:200px;--glow:0 0 20px rgba(59,130,246,0.15)}
-[data-theme="light"]{--bg:#f1f5f9;--bg-secondary:#ffffff;--card:#ffffff;--card-hover:#f8fafc;--text:#1e293b;--text-light:#64748b;--text-dim:#94a3b8;--border:#e2e8f0;--border-strong:#cbd5e1;--input-bg:#f8fafc;--hover-bg:#f1f5f9;--cat-bg:#f1f5f9;--sub-bg:#f8fafc;--shadow:0 4px 24px rgba(0,0,0,0.08);--header-bg:#ffffff;--th-bg:#f1f5f9;--th-color:#64748b;--total-bg:linear-gradient(135deg,#1e40af,#3b82f6);--sidebar-bg:#ffffff;--sidebar-text:#64748b;--sidebar-hover:#f1f5f9;--sidebar-active:#3b82f6;--glow:none;--accent-dim:rgba(59,130,246,0.08)}
+:root{--font-family:"Microsoft YaHei","PingFang SC",-apple-system,sans-serif;--primary:#f5f1e6;--primary-light:#e8e0d0;--accent:#d4af37;--accent-light:#e6c158;--accent-dim:rgba(212,175,55,0.12);--success:#10b981;--warning:#f59e0b;--danger:#ef4444;--bg:#0a0a0a;--bg-secondary:#1a1a1a;--card:#1a1a1a;--card-hover:#2a2a2a;--text:#f5f1e6;--text-light:#b8b4a9;--text-dim:#8a877e;--border:rgba(212,175,55,0.1);--border-strong:rgba(212,175,55,0.2);--input-bg:#0a0a0a;--hover-bg:rgba(212,175,55,0.06);--cat-bg:rgba(212,175,55,0.08);--sub-bg:rgba(26,26,26,0.6);--shadow:0 4px 24px rgba(0,0,0,0.5);--radius:12px;--radius-sm:8px;--header-bg:#0a0a0a;--th-bg:rgba(212,175,55,0.1);--th-color:#b8b4a9;--total-bg:linear-gradient(135deg,#8b6b1a,#d4af37);--total-color:#fff;--sidebar-bg:#050505;--sidebar-text:#b8b4a9;--sidebar-hover:#1a1a1a;--sidebar-active:#d4af37;--sidebar-width:200px;--glow:0 0 20px rgba(212,175,55,0.15)}
+[data-theme="light"]{--bg:#f8fafc;--bg-secondary:#ffffff;--card:#ffffff;--card-hover:#f1f5f9;--text:#1e293b;--text-light:#64748b;--text-dim:#94a3b8;--border:#e2e8f0;--border-strong:#cbd5e1;--input-bg:#f8fafc;--hover-bg:rgba(59,130,246,0.08);--cat-bg:#eff6ff;--sub-bg:#f8fafc;--shadow:0 4px 24px rgba(0,0,0,0.08);--header-bg:#ffffff;--th-bg:#eff6ff;--th-color:#3b82f6;--total-bg:linear-gradient(135deg,#1e40af,#3b82f6);--sidebar-bg:#ffffff;--sidebar-text:#64748b;--sidebar-hover:#eff6ff;--sidebar-active:#3b82f6;--glow:none;--accent-dim:rgba(59,130,246,0.08);--accent:#3b82f6;--accent-light:#60a5fa}
 [data-theme="gold"]{--accent:#c8a45c;--accent-light:#d4b878;--accent-dim:rgba(200,164,92,0.12);--total-bg:linear-gradient(135deg,#92400e,#c8a45c);--sidebar-active:#c8a45c;--glow:0 0 20px rgba(200,164,92,0.15);--success:#10b981;--warning:#f59e0b;--danger:#ef4444}
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:var(--font-family);background:var(--bg);color:var(--text);line-height:1.6;min-height:100vh;-webkit-font-smoothing:antialiased}
@@ -23,12 +23,14 @@ body{font-family:var(--font-family);background:var(--bg);color:var(--text);line-
 .theme-btn{padding:5px 14px;border:none;background:transparent;color:var(--text-dim);cursor:pointer;font-size:11px;transition:all .2s;font-weight:500}
 .theme-btn:hover{color:var(--text);background:var(--hover-bg)}
 .theme-btn.active{background:var(--accent);color:#fff;font-weight:600}
-.plan-switcher{display:flex;gap:0;border-radius:8px;overflow:hidden;border:1px solid var(--border-strong)}
+.theme-toggle-btn{background:transparent;border:1px solid var(--border-strong);border-radius:8px;padding:5px 10px;font-size:14px;cursor:pointer;color:var(--text);transition:all .2s;}
+.theme-toggle-btn:hover{background:var(--hover-bg);}
+.plan-switcher{display:flex;gap:0;border-radius:8px;overflow:hidden;border:1px solid var(--border)}
 .plan-btn{padding:5px 16px;border:none;background:transparent;color:var(--text-dim);cursor:pointer;font-size:12px;transition:all .2s;font-weight:500}
 .plan-btn:hover{color:var(--text)}
 .plan-btn.active{background:var(--accent);color:#fff;font-weight:600}
 .action-btns{display:flex;gap:6px}
-.btn{padding:6px 14px;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:500;transition:all .2s;display:inline-flex;align-items:center;gap:5px;font-family:var(--font-family)}
+.btn{padding:4px 10px;border:none;border-radius:8px;cursor:pointer;font-size:10px;font-weight:500;transition:all .2s;display:inline-flex;align-items:center;gap:5px;font-family:var(--font-family)}
 .btn-primary{background:var(--accent);color:#fff;box-shadow:0 2px 8px rgba(59,130,246,0.3)}
 .btn-primary:hover{background:var(--accent-light)}
 .btn-outline{background:transparent;border:1px solid var(--border-strong);color:var(--text)}
@@ -40,7 +42,7 @@ body{font-family:var(--font-family);background:var(--bg);color:var(--text);line-
 .btn-info:hover{background:#818cf8}
 .btn-dark{background:#374151;color:#fff}
 .btn-dark:hover{background:#4b5563}
-.btn-sm{padding:4px 10px;font-size:11px}
+.btn-sm{padding:3px 8px;font-size:9px}
 .btn-ghost{background:transparent;color:var(--text-light);border:none}
 .btn-ghost:hover{color:var(--text);background:var(--hover-bg)}
 .app-layout{display:flex;height:calc(100vh - 49px);overflow:hidden}
@@ -100,7 +102,7 @@ body{font-family:var(--font-family);background:var(--bg);color:var(--text);line-
 .dash-card-header h3{font-size:14px;font-weight:600;color:var(--text)}
 .dash-card-body{padding:16px 18px}
 .dash-table{width:100%;border-collapse:collapse;font-size:12px}
-.dash-table th{background:var(--bg-secondary);padding:8px 10px;text-align:left;font-weight:600;color:var(--text-light);border-bottom:1px solid var(--border);font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+.dash-table th{background:var(--bg-secondary);padding:8px 10px;text-align:center;font-weight:600;color:var(--text-light);border-bottom:1px solid var(--border);font-size:12px;text-transform:uppercase;letter-spacing:.5px;vertical-align:middle}
 .dash-table td{padding:8px 10px;border-bottom:1px solid var(--border);color:var(--text)}
 .dash-table tr:hover td{background:var(--hover-bg)}
 .dash-bar{height:6px;border-radius:3px;background:var(--bg-secondary);overflow:hidden;margin-top:4px}
@@ -153,7 +155,7 @@ body{font-family:var(--font-family);background:var(--bg);color:var(--text);line-
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .form-group{display:flex;flex-direction:column;gap:2px}
 .form-group.full{grid-column:1/-1}
-.form-group label{font-size:11px;color:var(--text-light);font-weight:500}
+.form-group label{font-size:12px;color:var(--text-light);font-weight:500}
 .form-group input,.form-group select,.form-group textarea{padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;outline:none;transition:border-color .2s;background:var(--input-bg);color:var(--text);font-family:var(--font-family)}
 .form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-dim)}
 .form-group textarea{resize:vertical;min-height:50px}
@@ -174,18 +176,19 @@ body{font-family:var(--font-family);background:var(--bg);color:var(--text);line-
 .btn-x{width:20px;height:20px;border:none;background:var(--danger);color:#fff;border-radius:50%;cursor:pointer;font-size:12px;line-height:1;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .btn-x:hover{opacity:.8}
 .quote-table-wrapper{overflow-x:auto}
-.quote-table{width:100%;border-collapse:collapse;font-size:11px;table-layout:auto}
-.quote-table th{background:var(--th-bg);color:var(--th-color);padding:7px 8px;text-align:center;font-weight:600;white-space:nowrap;position:sticky;top:0;font-size:10px;letter-spacing:.5px}
-.quote-table td{padding:5px 7px;border-bottom:1px solid var(--border);text-align:center;vertical-align:middle;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.quote-table{width:100%;border-collapse:collapse;font-size:12px;table-layout:auto}
+.quote-table th{background:var(--th-bg);color:var(--th-color);padding:7px 8px;text-align:center;font-weight:600;position:sticky;top:0;font-size:12px;letter-spacing:.5px;vertical-align:middle;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.quote-table td{padding:0;border-bottom:1px solid var(--border);text-align:center;vertical-align:top;height:auto}
 .quote-table tr:hover td{background:var(--hover-bg)}
 .quote-table .cat-row td{font-weight:600;color:var(--text);text-align:left;padding:7px 10px;font-size:16px;border-bottom:1px solid var(--border-strong);border-top:1px solid var(--border-strong)}.quote-table .sub-row td{font-weight:600;border-top:1px solid var(--border);border-bottom:1px solid var(--border);font-size:12px}
-.qt-input{padding:2px 4px;border:1px solid transparent;border-radius:4px;font-size:11px;outline:none;background:transparent;color:var(--text);font-family:var(--font-family);transition:border-color .2s;width:100%;overflow:hidden;text-overflow:ellipsis}
+.qt-input{padding:8px 6px;border:1px solid transparent;border-radius:4px;font-size:11px;outline:none;background:transparent;color:var(--text);font-family:var(--font-family);transition:border-color .2s;width:100%;display:block}
 .qt-input:hover{border-color:var(--border)}
 .qt-input:focus{border-color:var(--accent);background:var(--input-bg)}
-.qt-desc{font-family:'Microsoft YaHei UI Light','Microsoft YaHei Light',sans-serif;font-weight:300}
-.qt-name{text-align:left}.qt-desc{text-align:left}
-.col-num{min-width:40px}.col-amount{min-width:80px;font-weight:600;white-space:nowrap}.col-action{min-width:35px}
-.col-name{min-width:140px}.col-qty{min-width:55px}.col-unit{min-width:40px}.col-price{min-width:70px;white-space:nowrap}.col-desc{min-width:180px}
+div.qt-input{white-space:pre-wrap;word-wrap:break-word;word-break:break-all;line-height:1.6;min-height:36px;cursor:text}
+div.qt-name{text-align:left;font-size:14px;font-weight:500}
+div.qt-desc{font-family:'Microsoft YaHei UI Light','Microsoft YaHei Light',sans-serif;font-weight:300;text-align:left}
+.col-num{width:60px;max-width:60px}.col-amount{width:120px;max-width:120px;font-weight:600}.col-action{width:40px}
+.col-qty{width:80px;max-width:80px}.col-unit{width:60px;max-width:60px}.col-price{width:100px;max-width:100px}
 .quote-table th.resizable{position:relative;user-select:none}
 .quote-table th.resizable::after{content:'';position:absolute;right:0;top:0;bottom:0;width:4px;cursor:col-resize;background:transparent}
 .quote-table th.resizable:hover::after{background:var(--accent);opacity:.4}
@@ -304,7 +307,7 @@ body{font-family:var(--font-family);background:var(--bg);color:var(--text);line-
 
 /* Export version selector */
 .export-dropdown{position:relative;display:inline-block}
-.export-menu{display:none;position:absolute;top:100%;right:0;margin-top:4px;background:var(--card);border:1px solid var(--border-strong);border-radius:10px;overflow:hidden;box-shadow:var(--shadow);z-index:50;min-width:140px}
+.export-menu{display:none;position:absolute;top:100%;right:0;margin-top:4px;background:var(--card);border:1px solid var(--border-strong);border-radius:10px;overflow:hidden;box-shadow:var(--shadow);z-index:50;min-width:160px}
 .export-menu.show{display:block}
 .export-menu-item{display:flex;align-items:center;gap:8px;padding:8px 14px;cursor:pointer;font-size:12px;color:var(--text);transition:all .1s;border:none;background:none;width:100%;text-align:left;font-family:var(--font-family)}
 .export-menu-item:hover{background:var(--hover-bg);color:var(--accent)}
@@ -337,7 +340,7 @@ input[type=number]{-moz-appearance:textfield}
 /* AI Audit */
 .ai-settings{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
 .ai-settings .form-group{display:flex;flex-direction:column;gap:2px}
-.ai-settings .form-group label{font-size:11px;color:var(--text-light);font-weight:500}
+.ai-settings .form-group label{font-size:12px;color:var(--text-light);font-weight:500}
 .ai-settings .form-group input{padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;outline:none;background:var(--input-bg);color:var(--text);font-family:var(--font-family)}
 .ai-settings .form-group input:focus{border-color:var(--accent)}
 .ai-result{background:var(--bg-secondary);border:1px solid var(--border);border-radius:10px;padding:14px;min-height:200px;max-height:50vh;overflow-y:auto;font-size:13px;line-height:1.8;white-space:pre-wrap;word-break:break-word}
@@ -356,31 +359,27 @@ input[type=number]{-moz-appearance:textfield}
 <header class="app-header">
 <h1><span class="logo-icon"><img src="" id="headerLogo" style="width:28px;height:28px;border-radius:6px;object-fit:contain"></span> <span style="font-family:'Microsoft YaHei UI Light','Microsoft YaHei Light',sans-serif;font-weight:300">斑马<span style="color:var(--accent)">丨精装报价系统</span></span></h1>
 <div class="header-controls">
-<div class="ctrl-group"><label>主题</label>
-<div class="theme-btns">
-<button class="theme-btn" onclick="setTheme('dark')">深色</button>
-<button class="theme-btn" onclick="setTheme('light')">亮色</button>
-<button class="theme-btn" onclick="setTheme('gold')">金色</button>
-</div></div>
-<div class="ctrl-group"><label>字体</label>
+
+<div class="ctrl-group">
 <select id="fontSelect" onchange="setFont(this.value)">
 <option value='"Microsoft YaHei","PingFang SC",sans-serif'>微软雅黑</option>
 <option value='"SimHei","Heiti SC",sans-serif'>黑体</option>
 <option value='"PingFang SC","Microsoft YaHei",sans-serif'>苹方</option>
+<option value='"SimSun","NSimSun",sans-serif'>宋体</option>
+<option value='"FangSong","STFangsong",sans-serif'>仿宋</option>
+<option value='"Microsoft YaHei Light","Microsoft YaHei UI Light",sans-serif'>微软雅黑 Light</option>
 </select></div>
+<div class="ctrl-group">
+<button id="themeToggle" class="theme-toggle-btn" onclick="toggleDarkMode()">☀️</button>
+</div>
 <div class="plan-switcher">
 <button class="plan-btn plan-luxury active" onclick="setPlan('luxury')">奢享全案</button>
 <button class="plan-btn plan-premium" onclick="setPlan('premium')">优享精造</button>
 </div>
 <div class="action-btns">
-<button class="btn btn-ghost btn-sm" onclick="openMaterialLib()">材料库</button>
-<button class="btn btn-ghost btn-sm" onclick="openSpaceTypeLib()">空间库</button>
 <button class="btn btn-ghost btn-sm" id="watermarkBtn" onclick="toggleWatermark()">水印</button>
 <button class="btn btn-ghost btn-sm" onclick="openAiAudit()">AI审核</button>
-<div class="export-dropdown"><button class="btn btn-primary btn-sm" onclick="toggleExportMenu(event)">导出PDF ▾</button><div class="export-menu" id="exportMenu"><button class="export-menu-item" onclick="exportPDF('simple')">简约版</button><button class="export-menu-item" onclick="exportPDF('detailed')">详细版</button></div></div>
-<div class="export-dropdown"><button class="btn btn-outline btn-sm" onclick="togglePrintMenu(event)">打印 ▾</button><div class="export-menu" id="printMenu"><button class="export-menu-item" onclick="printQuote('simple')">简约版</button><button class="export-menu-item" onclick="printQuote('detailed')">详细版</button></div></div>
-<button class="btn btn-outline btn-sm" onclick="exportExcel()">导出Excel</button>
-<div class="export-dropdown"><button class="btn btn-outline btn-sm" onclick="toggleCategoryExportMenu(event)">分类报价单 ▾</button><div class="export-menu" id="categoryExportMenu"><button class="export-menu-item" onclick="exportCategoryQuote('main_material')">🧱 主材报价单</button><button class="export-menu-item" onclick="exportCategoryQuote('auxiliary')">🔧 辅料报价单</button><button class="export-menu-item" onclick="exportCategoryQuote('soft_furnishing')">🛋️ 软装报价单</button><button class="export-menu-item" onclick="exportCategoryQuote('equipment')">⚙️ 设备报价单</button></div></div>
+<div class="export-dropdown"><button class="btn btn-primary btn-sm" onclick="toggleExportMenu(event)">导出 ▾</button><div class="export-menu" id="exportMenu"><button class="export-menu-item" onclick="exportPDF('simple')">📄 简约版PDF</button><button class="export-menu-item" onclick="exportPDF('detailed')">📋 合同版PDF</button><button class="export-menu-item" onclick="exportExcel()">📊 导出Excel</button><div style="height:1px;background:var(--border);margin:4px 0"></div><button class="export-menu-item" onclick="printQuote('simple')">🖨️ 打印简约版</button><button class="export-menu-item" onclick="printQuote('detailed')">🖨️ 打印合同版</button><div style="height:1px;background:var(--border);margin:4px 0"></div><button class="export-menu-item" onclick="exportCategoryQuote('main_material')">🧱 主材报价单</button><button class="export-menu-item" onclick="exportCategoryQuote('auxiliary')">🔧 辅料报价单</button><button class="export-menu-item" onclick="exportCategoryQuote('soft_furnishing')">🛋️ 软装报价单</button><button class="export-menu-item" onclick="exportCategoryQuote('equipment')">⚙️ 设备报价单</button></div></div>
 </div>
 </div>
 </header>
@@ -394,6 +393,8 @@ input[type=number]{-moz-appearance:textfield}
 <button class="sidebar-btn sidebar-btn-accent" onclick="openImportDialog()"><span class="sb-icon">📥</span>导入量房</button>
 <button class="sidebar-btn sidebar-btn-data" onclick="showDashboard()"><span class="sb-icon">📊</span>数据看板</button>
 <button class="sidebar-btn" onclick="openProductDatabase()" style="color:var(--accent)"><span class="sb-icon">🗃️</span>产品数据库</button>
+<button class="sidebar-btn" onclick="openMaterialLib()"><span class="sb-icon">📦</span>材料库</button>
+<button class="sidebar-btn" onclick="openSpaceTypeLib()"><span class="sb-icon">🏠</span>空间库</button>
 </div>
 </div>
 <div class="sidebar-section">
@@ -429,7 +430,7 @@ input[type=number]{-moz-appearance:textfield}
 <div class="toast" id="toast"></div>
 <script src="materials-data.js"></script>
 <script src="logo-b64.js"></script>
-<script>window.onerror=function(m,u,l){document.title='ERR:'+m+' L'+l;alert('JS错误: '+m+' (行'+l+')')};console.log('scripts loading...')</script>
+<script>window.onerror=function(m,u,l,c,err){var msg='错误: '+m;if(u)msg+='\nURL: '+u;if(l)msg+='\n行号: '+l;if(c)msg+='\n列号: '+c;if(err&&err.stack)msg+='\n堆栈: '+err.stack;console.error(msg);document.title='ERR:'+m+' L'+l;alert(msg);return true};console.log('scripts loading...')</script>
 <script src="js/utils.js"></script>
 <script src="js/state.js"></script>
 <script src="js/encryption.js"></script>
