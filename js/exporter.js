@@ -18,6 +18,8 @@ function exportPDF(version) {
   var labels = { luxury: '奢享全案', premium: '优享精造' };
   var totals = calcQuoteTotal();
   
+  var oldOverlay = document.getElementById('pdf-overlay');
+  if (oldOverlay && oldOverlay.parentNode) oldOverlay.parentNode.removeChild(oldOverlay);
   var overlay = document.createElement('div');
   overlay.id = 'pdf-overlay';
   overlay.style.cssText = 'position:fixed;left:0;top:0;right:0;bottom:0;background:#fff;z-index:999999;display:flex;justify-content:center;align-items:flex-start;padding-top:20px;overflow:auto;';
@@ -25,7 +27,7 @@ function exportPDF(version) {
   var container = document.createElement('div');
   container.id = 'pdf-export-container';
   var isDetailed = version !== 'simple';
-  var pageW = isDetailed ? 1122 : 794;
+  var pageW = isDetailed ? 1080 : 794;
   container.style.cssText = 'width:'+pageW+'px;background:#fff;padding:0;margin:0;font-family:"Microsoft YaHei",sans-serif;color:#222;box-sizing:border-box;';
   
   var contentHTML;
@@ -36,6 +38,10 @@ function exportPDF(version) {
   }
   
   container.innerHTML = contentHTML;
+  if (!container.innerHTML || container.innerHTML.trim() === '') {
+    showToast('导出内容为空，请检查报价数据');
+    return;
+  }
   overlay.appendChild(container);
   document.body.appendChild(overlay);
   
@@ -44,7 +50,7 @@ function exportPDF(version) {
   setTimeout(function() {
     try {
       var opt = {
-        margin: [6, 4, 6, 4],
+        margin: [12, 8, 18, 8],
         filename: '报价单-' + (version === 'simple' ? '简约' : '合同') + '版.pdf',
         image: { type: 'jpeg', quality: 1 },
         html2canvas: {
@@ -52,16 +58,33 @@ function exportPDF(version) {
           useCORS: true,
           backgroundColor: '#ffffff',
           allowTaint: true,
-          logging: false
+          logging: false,
+          width: pageW,
+          windowWidth: pageW
         },
         jsPDF: {
           unit: 'mm',
           format: 'a4',
           orientation: isDetailed ? 'landscape' : 'portrait'
+        },
+        pageBreak: {
+          mode: ['css'],
+          avoid: ['tr', '.section-header', '.summary-row']
         }
       };
       
-      html2pdf().set(opt).from(container).save().then(function() {
+      html2pdf().set(opt).from(container).toPdf().get('pdf').then(function (pdf) {
+        var pageCount = pdf.internal.getNumberOfPages();
+        for (var i = 1; i <= pageCount; i++) {
+          pdf.setPage(i);
+          pdf.setFont('helvetica', 'normal');
+          pdf.setFontSize(9);
+          pdf.setTextColor(150, 150, 150);
+          var pw = pdf.internal.pageSize.getWidth();
+          var ph = pdf.internal.pageSize.getHeight();
+          pdf.text(i + ' / ' + pageCount, pw / 2, ph - 8, { align: 'center' });
+        }
+        pdf.save(opt.filename);
         if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
         showToast('PDF导出成功！');
       }).catch(function(error) {
@@ -74,7 +97,7 @@ function exportPDF(version) {
       if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
       showToast('PDF导出异常，请重试');
     }
-  }, 500);
+  }, 800);
 }
 
 function printQuote(version) {
@@ -97,7 +120,7 @@ function printQuote(version) {
 function exportHeaderHTML(ci, labels) {
   var modeLabels = { full: '全案落地', light: '轻工辅料' };
   var qm = ci.quoteMode || 'full';
-  return '<div style="text-align:center;margin-bottom:16px"><div style="font-size:22px;font-weight:700;letter-spacing:2px">斑马精装报价单</div><div style="font-size:12px;color:#888;margin-top:2px">' + (labels[S.currentPlan] || '') + ' · ' + (modeLabels[qm] || '全案落地') + '</div></div><table style="width:100%;font-size:12px;border-collapse:collapse;margin-bottom:12px"><tr><td style="width:25%;padding:4px 0;border-bottom:1px solid #e0e0e0"><b>客户：</b>' + esc(ci.name) + '</td><td style="width:25%;padding:4px 0;border-bottom:1px solid #e0e0e0"><b>联系方式：</b>' + esc(ci.phone) + '</td><td style="width:25%;padding:4px 0;border-bottom:1px solid #e0e0e0"><b>设计师：</b>' + esc(ci.designer) + '</td><td style="width:25%;padding:4px 0;border-bottom:1px solid #e0e0e0"><b>设计师电话：</b>' + esc(ci.designerPhone) + '</td></tr><tr><td colspan="2" style="padding:4px 0;border-bottom:1px solid #e0e0e0"><b>地址：</b>' + esc(ci.address) + '</td><td style="padding:4px 0;border-bottom:1px solid #e0e0e0"><b>工艺标准：</b>' + (labels[S.currentPlan] || '') + '</td><td style="padding:4px 0;border-bottom:1px solid #e0e0e0"><b>报价模式：</b>' + (modeLabels[qm] || '全案落地') + '</td></tr><tr><td colspan="2" style="padding:4px 0"><b>面积：</b>' + esc(ci.area) + '㎡</td><td style="padding:4px 0"><b>日期：</b>' + esc(ci.date) + '</td><td></td></tr></table>';
+  return '<div style="text-align:center;margin-bottom:16px"><div style="font-size:22px;font-weight:700;letter-spacing:2px">斑马精装报价单</div><div style="font-size:12px;color:#888;margin-top:2px">' + (labels[S.currentPlan] || '') + ' · ' + (modeLabels[qm] || '全案落地') + '</div></div><table style="width:100%;font-size:12px;border-collapse:collapse;margin-bottom:12px"><tr><td style="width:25%;padding:4px 0;border-bottom:1px solid #e0e0e0"><b>客户：</b>' + esc(ci.name) + '</td><td style="width:25%;padding:4px 0;border-bottom:1px solid #e0e0e0"><b>联系方式：</b>' + esc(ci.phone) + '</td><td style="width:25%;padding:4px 0;border-bottom:1px solid #e0e0e0"><b>设计师：</b>' + esc(ci.designer) + '</td><td style="width:25%;padding:4px 0;border-bottom:1px solid #e0e0e0"><b>设计师电话：</b>' + esc(ci.designerPhone) + '</td></tr><tr><td colspan="2" style="padding:4px 0;border-bottom:1px solid #e0e0e0"><b>地址：</b>' + esc(ci.address) + '</td><td style="padding:4px 0;border-bottom:1px solid #e0e0e0"><b>工艺标准：</b>' + (labels[S.currentPlan] || '') + '</td><td style="padding:4px 0;border-bottom:1px solid #e0e0e0"><b>报价模式：</b>' + (modeLabels[qm] || '全案落地') + '</td></tr><tr><td colspan="2" style="padding:4px 0"><b>面积：</b>' + esc(ci.area) + '㎡</td><td style="padding:4px 0"><b>日期：</b>' + esc(ci.date) + '</td></tr></table>';
 }
 
 function exportSummaryHTML(totals) {
@@ -200,17 +223,23 @@ function exportSimpleTable() {
 }
 
 function exportDetailedTable() {
-  var fixedCols = {num: 24, name: 100, qty: 24, unit: 24, price: 24, amount: 100, desc: 180, action: 24};
-  var cw = S.colWidths || {};
-  Object.keys(fixedCols).forEach(function(k) { if (!cw[k]) cw[k] = fixedCols[k]; });
-  var totalW = (cw.num || 24) + (cw.name || 100) + (cw.qty || 24) + (cw.unit || 24) + (cw.price || 24) + (cw.amount || 100) + (cw.desc || 180);
-  var pNum = ((cw.num || 24) / totalW * 100).toFixed(2);
-  var pName = ((cw.name || 100) / totalW * 100).toFixed(2);
-  var pQty = ((cw.qty || 24) / totalW * 100).toFixed(2);
-  var pUnit = ((cw.unit || 24) / totalW * 100).toFixed(2);
-  var pPrice = ((cw.price || 24) / totalW * 100).toFixed(2);
-  var pAmount = ((cw.amount || 100) / totalW * 100).toFixed(2);
-  var pDesc = ((cw.desc || 180) / totalW * 100).toFixed(2);
+  var cw = {};
+  var src = S.colWidths || {};
+  if (src.num) cw.num = src.num; else cw.num = 24;
+  if (src.name) cw.name = src.name; else cw.name = 100;
+  if (src.qty) cw.qty = src.qty; else cw.qty = 24;
+  if (src.unit) cw.unit = src.unit; else cw.unit = 24;
+  if (src.price) cw.price = src.price; else cw.price = 24;
+  if (src.amount) cw.amount = src.amount; else cw.amount = 100;
+  if (src.desc) cw.desc = src.desc; else cw.desc = 180; // 加上desc列的宽度
+  var totalFixed = cw.num + cw.name + cw.qty + cw.unit + cw.price + cw.amount + cw.desc;
+  var pNum = (cw.num / totalFixed * 100).toFixed(2);
+  var pName = (cw.name / totalFixed * 100).toFixed(2);
+  var pQty = (cw.qty / totalFixed * 100).toFixed(2);
+  var pUnit = (cw.unit / totalFixed * 100).toFixed(2);
+  var pPrice = (cw.price / totalFixed * 100).toFixed(2);
+  var pAmount = (cw.amount / totalFixed * 100).toFixed(2);
+  var pDesc = (cw.desc / totalFixed * 100).toFixed(2);
 
   var items = S.quoteItems.concat(S.productQuoteItems);
   var seq = 1;
@@ -238,7 +267,7 @@ function exportDetailedTable() {
     var fT = fi.reduce(function(s, q) {
       return s + q.quantity * q.unitPrice;
     }, 0);
-    h += '<tr><td colspan="5" style="padding:6px 3px;font-weight:600;font-size:11px;border-bottom:1px solid #e0e0e0">🏗️ '+esc(fl)+'</td><td></td><td style="text-align:right;font-weight:600;white-space:nowrap">¥'+fmt(fT)+'</td></tr>';
+    h += '<tr class="section-header"><td colspan="6" style="padding:7px 3px;font-weight:700;font-size:13px;border-bottom:1px solid #e0e0e0">🏗️ '+esc(fl)+'</td><td style="text-align:right;font-weight:700;font-size:13px;white-space:nowrap">¥'+fmt(fT)+'</td></tr>';
     rooms.forEach(function(room) {
       var ri = fi.filter(function(q) {
         return q.roomId === room.id;
@@ -247,7 +276,7 @@ function exportDetailedTable() {
       var rT = ri.reduce(function(s, q) {
         return s + q.quantity * q.unitPrice;
       }, 0);
-      h += '<tr><td colspan="5" style="padding:4px 3px 4px 14px;font-weight:600;border-bottom:1px solid #f0f0f0">📍 '+esc(room.name)+'</td><td></td><td style="text-align:right;font-weight:600;white-space:nowrap">¥'+fmt(rT)+'</td></tr>';
+      h += '<tr class="section-header"><td colspan="6" style="padding:5px 3px 5px 14px;font-weight:600;font-size:11px;border-bottom:1px solid #f0f0f0">📍 '+esc(room.name)+'</td><td style="text-align:right;font-weight:600;font-size:11px;white-space:nowrap">¥'+fmt(rT)+'</td></tr>';
       ri.forEach(function(qi) {
         h += dRow(qi, seq++);
       });

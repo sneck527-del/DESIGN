@@ -42,7 +42,7 @@ body{font-family:var(--font-family);background:var(--bg);color:var(--text);line-
 .btn-info:hover{background:#818cf8}
 .btn-dark{background:#374151;color:#fff}
 .btn-dark:hover{background:#4b5563}
-.btn-sm{padding:3px 8px;font-size:9px}
+.btn-sm{padding:3px 8px;font-size:12px}
 .btn-ghost{background:transparent;color:var(--text-light);border:none}
 .btn-ghost:hover{color:var(--text);background:var(--hover-bg)}
 .app-layout{display:flex;height:calc(100vh - 49px);overflow:hidden}
@@ -164,13 +164,13 @@ body{font-family:var(--font-family);background:var(--bg);color:var(--text);line-
 .room-item-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px}
 .room-item-name{font-weight:600;font-size:12px;color:var(--text)}
 .room-item-type{font-size:10px;background:var(--accent);color:#fff;padding:2px 7px;border-radius:10px;font-weight:600}
-.room-item-dims{font-size:11px;color:var(--text-light);margin-bottom:4px}
-.room-item-areas{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;font-size:10px}
+.room-item-dims{font-size:12px;color:var(--text-light);margin-bottom:4px}
+.room-item-areas{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;font-size:12px}
 .room-area-tag{background:var(--accent-dim);padding:2px 6px;border-radius:4px;text-align:center;color:var(--text-light)}
 .room-area-tag span{font-weight:600;color:var(--accent)}
 .room-item-actions{display:flex;gap:5px;margin-top:6px}
 .room-item-tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
-.room-tag{font-size:10px;padding:1px 6px;border-radius:4px;background:var(--accent);color:#fff}.floor-header{font-size:16px;font-weight:700;color:var(--text);padding:10px 12px;background:var(--accent-dim);border-radius:8px;margin-bottom:8px;cursor:pointer;transition:all .15s}.floor-header:hover{background:var(--accent);color:#fff}
+.room-tag{font-size:10px;padding:1px 6px;border-radius:4px;background:var(--accent);color:#fff}.floor-header{font-size:14px;font-weight:700;color:var(--text);padding:10px 12px;background:var(--accent-dim);border-radius:8px;margin-bottom:8px;cursor:pointer;transition:all .15s}.floor-header:hover{background:var(--accent);color:#fff}
 .sub-section{margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
 .sub-section h4{font-size:12px;font-weight:600;margin-bottom:6px;color:var(--text)}
 .btn-x{width:20px;height:20px;border:none;background:var(--danger);color:#fff;border-radius:50%;cursor:pointer;font-size:12px;line-height:1;display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -187,8 +187,7 @@ body{font-family:var(--font-family);background:var(--bg);color:var(--text);line-
 div.qt-input{white-space:pre-wrap;word-wrap:break-word;word-break:break-all;line-height:1.6;min-height:36px;cursor:text}
 div.qt-name{text-align:left;font-size:14px;font-weight:500}
 div.qt-desc{font-family:'Microsoft YaHei UI Light','Microsoft YaHei Light',sans-serif;font-weight:300;text-align:left}
-.col-num{width:60px;max-width:60px}.col-amount{width:120px;max-width:120px;font-weight:600}.col-action{width:40px}
-.col-qty{width:80px;max-width:80px}.col-unit{width:60px;max-width:60px}.col-price{width:100px;max-width:100px}
+.col-num{width:24px;max-width:24px}.col-name{width:120px;max-width:120px}.col-qty{width:24px;max-width:24px}.col-unit{width:24px;max-width:24px}.col-price{width:24px;max-width:24px}.col-amount{width:100px;max-width:100px;font-weight:600}.col-action{width:10px;max-width:10px;text-align:center}
 .quote-table th.resizable{position:relative;user-select:none}
 .quote-table th.resizable::after{content:'';position:absolute;right:0;top:0;bottom:0;width:4px;cursor:col-resize;background:transparent}
 .quote-table th.resizable:hover::after{background:var(--accent);opacity:.4}
@@ -198,7 +197,7 @@ div.qt-desc{font-family:'Microsoft YaHei UI Light','Microsoft YaHei Light',sans-
 .summary-value{font-size:13px;font-weight:600;white-space:nowrap}
 .summary-row.total{background:var(--total-bg);color:var(--total-color);border-radius:10px;margin-top:6px;padding:12px 14px}
 .summary-row.total .summary-label{color:rgba(255,255,255,0.85);font-size:14px}
-.summary-row.total .summary-value{color:#fff;font-size:20px}
+.summary-row.total .summary-value{color:#fff;font-size:14px}
 .rate-input{width:50px;padding:2px 4px;border:1px solid var(--border);border-radius:4px;text-align:center;font-size:11px;outline:none;background:var(--input-bg);color:var(--text);font-family:var(--font-family)}
 
 /* Custom Notes */
@@ -361,7 +360,7 @@ input[type=number]{-moz-appearance:textfield}
 <div class="header-controls">
 
 <div class="ctrl-group">
-<select id="fontSelect" onchange="setFont(this.value)">
+<select id="fontSelect" onchange="setFont(this.value)" style="font-size:14px">
 <option value='"Microsoft YaHei","PingFang SC",sans-serif'>微软雅黑</option>
 <option value='"SimHei","Heiti SC",sans-serif'>黑体</option>
 <option value='"PingFang SC","Microsoft YaHei",sans-serif'>苹方</option>
@@ -372,14 +371,10 @@ input[type=number]{-moz-appearance:textfield}
 <div class="ctrl-group">
 <button id="themeToggle" class="theme-toggle-btn" onclick="toggleDarkMode()">☀️</button>
 </div>
-<div class="plan-switcher">
-<button class="plan-btn plan-luxury active" onclick="setPlan('luxury')">奢享全案</button>
-<button class="plan-btn plan-premium" onclick="setPlan('premium')">优享精造</button>
-</div>
 <div class="action-btns">
-<button class="btn btn-ghost btn-sm" id="watermarkBtn" onclick="toggleWatermark()">水印</button>
-<button class="btn btn-ghost btn-sm" onclick="openAiAudit()">AI审核</button>
-<div class="export-dropdown"><button class="btn btn-primary btn-sm" onclick="toggleExportMenu(event)">导出 ▾</button><div class="export-menu" id="exportMenu"><button class="export-menu-item" onclick="exportPDF('simple')">📄 简约版PDF</button><button class="export-menu-item" onclick="exportPDF('detailed')">📋 合同版PDF</button><button class="export-menu-item" onclick="exportExcel()">📊 导出Excel</button><div style="height:1px;background:var(--border);margin:4px 0"></div><button class="export-menu-item" onclick="printQuote('simple')">🖨️ 打印简约版</button><button class="export-menu-item" onclick="printQuote('detailed')">🖨️ 打印合同版</button><div style="height:1px;background:var(--border);margin:4px 0"></div><button class="export-menu-item" onclick="exportCategoryQuote('main_material')">🧱 主材报价单</button><button class="export-menu-item" onclick="exportCategoryQuote('auxiliary')">🔧 辅料报价单</button><button class="export-menu-item" onclick="exportCategoryQuote('soft_furnishing')">🛋️ 软装报价单</button><button class="export-menu-item" onclick="exportCategoryQuote('equipment')">⚙️ 设备报价单</button></div></div>
+<button class="btn btn-ghost btn-sm" id="watermarkBtn" onclick="toggleWatermark()" style="font-size:14px">水印</button>
+<button class="btn btn-ghost btn-sm" onclick="openAiAudit()" style="font-size:14px">AI审核</button>
+<div class="export-dropdown"><button class="btn btn-primary btn-sm" onclick="toggleExportMenu(event)" style="font-size:14px">导出 ▾</button><div class="export-menu" id="exportMenu"><button class="export-menu-item" onclick="exportPDF('detailed')">📄 导出PDF</button><button class="export-menu-item" onclick="exportExcel()">📊 导出Excel</button><div style="height:1px;background:var(--border);margin:4px 0"></div><button class="export-menu-item" onclick="printQuote('detailed')">🖨️ 打印</button><div style="height:1px;background:var(--border);margin:4px 0"></div><button class="export-menu-item" onclick="exportCategoryQuote('main_material')">🧱 主材报价单</button><button class="export-menu-item" onclick="exportCategoryQuote('auxiliary')">🔧 辅料报价单</button><button class="export-menu-item" onclick="exportCategoryQuote('soft_furnishing')">🛋️ 软装报价单</button><button class="export-menu-item" onclick="exportCategoryQuote('equipment')">⚙️ 设备报价单</button></div></div>
 </div>
 </div>
 </header>
@@ -407,9 +402,9 @@ input[type=number]{-moz-appearance:textfield}
 </aside>
 <div class="app-main" id="appMain">
 <div class="view active" id="welcomeView"><div class="welcome-view"><div class="welcome-content"><div class="wc-icon"><img src="" id="welcomeLogo" style="width:64px;height:64px;object-fit:contain"></div><h2 style="font-family:'Microsoft YaHei UI Light','Microsoft YaHei Light',sans-serif;font-weight:300">斑马丨精装报价系统</h2><p>新建文件或打开最近文档</p><div class="welcome-actions"><div class="welcome-card" onclick="createNewFile('quotation')"><div class="wc-emoji">📋</div><h3>新建报价</h3><p>创建报价文件</p></div><div class="welcome-card" onclick="createNewFile('measurement')"><div class="wc-emoji">📐</div><h3>新建量房</h3><p>记录房间尺寸</p></div><div class="welcome-card" onclick="openProductDatabase()"><div class="wc-emoji">🗃️</div><h3>产品数据库</h3><p>管理产品信息</p></div><div class="welcome-card" onclick="showDashboard()"><div class="wc-emoji">📊</div><h3>数据看板</h3><p>查看数据统计</p></div></div></div></div></div>
-<div class="view" id="measurementView"><div class="measurement-header"><h2><span>📐</span><input class="project-name-input" id="msProjectName" placeholder="输入项目名称" oninput="onMsProjectNameChange()"></h2><div class="measurement-header-actions"><button class="btn btn-primary" onclick="submitMeasurementToQuotation()">提交并保存</button></div></div><div class="card" style="margin-bottom:14px"><div class="card-header"><h2>客户信息</h2></div><div class="card-body"><div class="form-grid"><div class="form-group"><label>客户姓名</label><input id="msCustName" oninput="onMsCustChange()"></div><div class="form-group"><label>联系方式</label><input id="msCustPhone" oninput="onMsCustChange()"></div><div class="form-group"><label>设计师</label><input id="msCustDesigner" oninput="onMsCustChange()"></div><div class="form-group"><label>设计师联系方式</label><input id="msCustDesignerPhone" oninput="onMsCustChange()"></div><div class="form-group full"><label>装修地址</label><input id="msCustAddress" oninput="onMsCustChange()"></div><div class="form-group"><label>工艺标准</label><select id="msCustPlan" onchange="onMsCustChange()"><option value="luxury">奢享全案</option><option value="premium">优享精造</option></select></div><div class="form-group"><label>报价模式</label><select id="msCustQuoteMode" onchange="onMsCustChange()"><option value="full">全案落地</option><option value="light">轻工辅料</option></select></div><div class="form-group"><label>量房日期</label><input type="date" id="msCustDate" oninput="onMsCustChange()"></div><div class="form-group"><label>建筑面积(㎡)</label><input type="number" id="msCustArea" oninput="onMsCustChange()" step="0.01"></div></div></div></div><div class="card"><div class="card-header"><h2>房间尺寸记录</h2><div style="display:flex;gap:6px"><button class="btn btn-outline btn-sm" onclick="importRoomsFromFile()">📥 导入房间</button><button class="btn btn-primary btn-sm" onclick="openMsRoomEditor()">+ 添加房间</button></div></div><div class="card-body" id="msRoomList"></div></div></div>
-<div class="view" id="quotationView"><div class="measurement-header"><h2><span>📋</span>报价编辑</h2><div class="measurement-header-actions"><button class="btn btn-primary" onclick="saveCurrentFile()">保存文件</button><button class="btn btn-outline" onclick="saveAndExit()">保存并退出</button></div></div><div class="quotation-layout"><div class="left-panel"><div class="card"><div class="card-header"><h2>客户信息</h2></div><div class="card-body"><div class="form-grid"><div class="form-group"><label>客户姓名</label><input id="custName" oninput="onCustChange()"></div><div class="form-group"><label>联系方式</label><input id="custPhone" oninput="onCustChange()"></div><div class="form-group"><label>设计师</label><input id="custDesigner" oninput="onCustChange()"></div><div class="form-group"><label>设计师联系方式</label><input id="custDesignerPhone" oninput="onCustChange()"></div><div class="form-group full"><label>装修地址</label><input id="custAddress" oninput="onCustChange()"></div><div class="form-group"><label>工艺标准</label><select id="custPlan" onchange="onCustChange()"><option value="luxury">奢享全案</option><option value="premium">优享精造</option></select></div><div class="form-group"><label>报价模式</label><select id="custQuoteMode" onchange="onCustChange()"><option value="full">全案落地</option><option value="light">轻工辅料</option></select></div><div class="form-group"><label>报价日期</label><input type="date" id="custDate" oninput="onCustChange()"></div><div class="form-group"><label>建筑面积(㎡)</label><input type="number" id="custArea" oninput="onCustChange()" step="0.01"></div></div></div></div><div class="card"><div class="card-header"><h2>房间信息</h2><div style="display:flex;gap:6px"><button class="btn btn-outline btn-sm" onclick="exportRooms()">📤 导出房间</button><button class="btn btn-primary btn-sm" onclick="openRoomEditor()">+ 添加房间</button></div></div><div class="card-body" id="roomList"></div></div></div>
-<div class="right-panel"><div class="card"><div class="card-header"><h2>报价明细</h2><div style="display:flex;gap:4px"><button class="btn btn-outline btn-sm" id="addProductBtn" onclick="openAddProductsToQuote()" title="从产品库添加">+ 产品清单</button><button class="btn btn-outline btn-sm" onclick="saveAsTemplatePrompt()" title="保存为模板">💾 存模板</button></div></div><div class="card-body quote-table-wrapper" id="quoteTableWrapper"></div></div><div class="card"><div class="card-header"><h2>费用汇总</h2></div><div class="card-body" id="summarySection"></div></div>
+<div class="view" id="measurementView"><div class="measurement-header"><h2><span>📐</span><input class="project-name-input" id="msProjectName" placeholder="输入项目名称" oninput="onMsProjectNameChange()"></h2><div class="measurement-header-actions"><button class="btn btn-primary" onclick="submitMeasurementToQuotation()">提交并保存</button></div></div><div class="card" style="margin-bottom:14px"><div class="card-header"><h2>客户信息</h2></div><div class="card-body"><div class="form-grid"><div class="form-group"><label>客户姓名</label><input id="msCustName" oninput="onMsCustChange()"></div><div class="form-group"><label>联系方式</label><input id="msCustPhone" oninput="onMsCustChange()"></div><div class="form-group"><label>设计师</label><input id="msCustDesigner" oninput="onMsCustChange()"></div><div class="form-group"><label>设计师联系方式</label><input id="msCustDesignerPhone" oninput="onMsCustChange()"></div><div class="form-group full"><label>装修地址</label><input id="msCustAddress" oninput="onMsCustChange()"></div><div class="form-group"><label>工艺标准</label><select id="msCustPlan" onchange="onMsCustChange()"><option value="luxury">奢享全案</option><option value="premium">优享精造</option></select></div><div class="form-group"><label>报价模式</label><select id="msCustQuoteMode" onchange="onMsCustChange()"><option value="full">全案落地</option><option value="light">轻工辅料</option></select></div><div class="form-group"><label>量房日期</label><input type="date" id="msCustDate" oninput="onMsCustChange()"></div><div class="form-group"><label>建筑面积(㎡)</label><input type="number" id="msCustArea" oninput="onMsCustChange()" step="0.01"></div></div></div></div><div class="card"><div class="card-header"><h2>房间尺寸记录</h2><div style="display:flex;gap:6px"><button class="btn btn-outline btn-sm" onclick="importRoomsFromFile()">📥 导入房间</button><button class="btn btn-outline btn-sm" onclick="importRoomsFromImage()">🖼️ 导入图片</button><button class="btn btn-primary btn-sm" onclick="openMsRoomEditor()">+ 添加房间</button></div></div><div class="card-body" id="msRoomList"></div></div></div>
+<div class="view" id="quotationView"><div class="measurement-header"><h2><span>📋</span>报价编辑</h2><div class="measurement-header-actions"><button class="btn btn-primary" onclick="saveCurrentFile()" style="font-size:14px">保存文件</button><button class="btn btn-outline" onclick="saveAndExit()" style="font-size:14px">保存并退出</button></div></div><div class="quotation-layout"><div class="left-panel"><div class="card"><div class="card-header"><h2>客户信息</h2></div><div class="card-body"><div class="form-grid"><div class="form-group"><label>客户姓名</label><input id="custName" oninput="onCustChange()"></div><div class="form-group"><label>联系方式</label><input id="custPhone" oninput="onCustChange()"></div><div class="form-group"><label>设计师</label><input id="custDesigner" oninput="onCustChange()"></div><div class="form-group"><label>设计师联系方式</label><input id="custDesignerPhone" oninput="onCustChange()"></div><div class="form-group full"><label>装修地址</label><input id="custAddress" oninput="onCustChange()"></div><div class="form-group"><label>工艺标准</label><select id="custPlan" onchange="onCustChange()"><option value="luxury">奢享全案</option><option value="premium">优享精造</option></select></div><div class="form-group"><label>报价模式</label><select id="custQuoteMode" onchange="onCustChange()"><option value="full">全案落地</option><option value="light">轻工辅料</option></select></div><div class="form-group"><label>报价日期</label><input type="date" id="custDate" oninput="onCustChange()"></div><div class="form-group"><label>建筑面积(㎡)</label><input type="number" id="custArea" oninput="onCustChange()" step="0.01"></div></div></div></div><div class="card"><div class="card-header"><h2>房间信息</h2><div style="display:flex;gap:6px"><button class="btn btn-outline btn-sm" onclick="exportRooms()">📤 导出房间</button><button class="btn btn-primary btn-sm" onclick="openRoomEditor()">+ 添加房间</button></div></div><div class="card-body" id="roomList"></div></div></div>
+<div class="right-panel"><div class="card"><div class="card-header"><h2>报价明细</h2><div style="display:flex;gap:4px"><button class="btn btn-outline btn-sm" onclick="saveAsTemplatePrompt()" title="保存为模板" style="font-size:14px">💾 存模板</button></div></div><div class="card-body quote-table-wrapper" id="quoteTableWrapper"></div></div><div class="card"><div class="card-header"><h2>费用汇总</h2></div><div class="card-body" id="summarySection"></div></div>
 <div class="card"><div class="card-header"><h2>备注信息</h2></div><div class="card-body notes-area"><textarea id="customNotes" placeholder="输入自定义备注信息，如施工要求、注意事项、付款方式等..." oninput="onNotesChange()"></textarea></div></div></div></div></div>
 <div class="view" id="dashboardView"></div>
 <div class="view" id="bossView"></div>
@@ -432,12 +427,20 @@ input[type=number]{-moz-appearance:textfield}
 <script src="logo-b64.js"></script>
 <script>window.onerror=function(m,u,l,c,err){var msg='错误: '+m;if(u)msg+='\nURL: '+u;if(l)msg+='\n行号: '+l;if(c)msg+='\n列号: '+c;if(err&&err.stack)msg+='\n堆栈: '+err.stack;console.error(msg);document.title='ERR:'+m+' L'+l;alert(msg);return true};console.log('scripts loading...')</script>
 <script src="js/utils.js"></script>
+<script src="js/config/ai-config.js"></script>
 <script src="js/state.js"></script>
 <script src="js/encryption.js"></script>
 <script src="js/storage.js"></script>
 <script src="js/file-manager.js"></script>
 <script src="js/calculator.js"></script>
 <script src="js/exporter.js"></script>
+<script src="js/services/ai-service.js"></script>
+<script src="js/services/construction-service.js"></script>
+<script src="js/services/dashboard-service.js"></script>
+<script src="js/services/boss-service.js"></script>
+<script src="js/services/material-service.js"></script>
+<script src="js/services/product-service.js"></script>
+<script src="js/services/calculator-service.js"></script>
 <script src="js/main.js"></script>
 <script>console.log('modules loaded OK');document.title=document.title.replace('ERR:','FIXED:')</script>
 </body>
