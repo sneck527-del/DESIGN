@@ -226,20 +226,19 @@ function exportDetailedTable() {
   var cw = {};
   var src = S.colWidths || {};
   if (src.num) cw.num = src.num; else cw.num = 24;
-  if (src.name) cw.name = src.name; else cw.name = 100;
+  if (src.name) cw.name = src.name; else cw.name = 120;
   if (src.qty) cw.qty = src.qty; else cw.qty = 24;
   if (src.unit) cw.unit = src.unit; else cw.unit = 24;
   if (src.price) cw.price = src.price; else cw.price = 24;
   if (src.amount) cw.amount = src.amount; else cw.amount = 100;
-  if (src.desc) cw.desc = src.desc; else cw.desc = 180; // 加上desc列的宽度
-  var totalFixed = cw.num + cw.name + cw.qty + cw.unit + cw.price + cw.amount + cw.desc;
+  if (src.desc) cw.desc = src.desc; else cw.desc = null;
+  var totalFixed = cw.num + cw.name + cw.qty + cw.unit + cw.price + cw.amount;
   var pNum = (cw.num / totalFixed * 100).toFixed(2);
   var pName = (cw.name / totalFixed * 100).toFixed(2);
   var pQty = (cw.qty / totalFixed * 100).toFixed(2);
   var pUnit = (cw.unit / totalFixed * 100).toFixed(2);
   var pPrice = (cw.price / totalFixed * 100).toFixed(2);
   var pAmount = (cw.amount / totalFixed * 100).toFixed(2);
-  var pDesc = (cw.desc / totalFixed * 100).toFixed(2);
 
   var items = S.quoteItems.concat(S.productQuoteItems);
   var seq = 1;
@@ -252,7 +251,15 @@ function exportDetailedTable() {
   var floors = Object.keys(fg).sort(function(a, b) {
     return floorSortKey(a) - floorSortKey(b);
   });
-  var h = '<table style="width:100%;border-collapse:collapse;font-size:10px;margin-top:10px;table-layout:fixed"><colgroup><col style="width:'+pNum+'%"><col style="width:'+pName+'%"><col style="width:'+pQty+'%"><col style="width:'+pUnit+'%"><col style="width:'+pPrice+'%"><col style="width:'+pAmount+'%"><col style="width:'+pDesc+'%"></colgroup><thead><tr style="border-bottom:2px solid #bbb"><th style="padding:6px 4px;text-align:center">序号</th><th style="padding:6px 4px;text-align:center">项目</th><th style="padding:6px 4px;text-align:center">数量</th><th style="padding:6px 4px;text-align:center">单位</th><th style="padding:6px 4px;text-align:center">单价</th><th style="padding:6px 4px;text-align:center">金额</th><th style="padding:6px 4px;text-align:center">说明</th></tr></thead><tbody>';
+  var colgroupHTML = '<colgroup><col style="width:'+pNum+'%"><col style="width:'+pName+'%"><col style="width:'+pQty+'%"><col style="width:'+pUnit+'%"><col style="width:'+pPrice+'%"><col style="width:'+pAmount+'%">';
+  if (cw.desc) {
+    var pDesc = (cw.desc / (totalFixed + cw.desc) * 100).toFixed(2);
+    colgroupHTML += '<col style="width:'+pDesc+'%">';
+  } else {
+    colgroupHTML += '<col style="width:auto">';
+  }
+  colgroupHTML += '</colgroup>';
+  var h = '<table style="width:100%;border-collapse:collapse;font-size:10px;margin-top:10px;table-layout:fixed">' + colgroupHTML + '<thead><tr style="border-bottom:2px solid #bbb"><th style="padding:6px 4px;text-align:center">序号</th><th style="padding:6px 4px;text-align:center">项目</th><th style="padding:6px 4px;text-align:center">数量</th><th style="padding:6px 4px;text-align:center">单位</th><th style="padding:6px 4px;text-align:center">单价</th><th style="padding:6px 4px;text-align:center">金额</th><th style="padding:6px 4px;text-align:center">说明</th></tr></thead><tbody>';
   function dRow(qi, s) {
     return '<tr style="border-bottom:1px solid #f0f0f0"><td style="padding:4px 3px;text-align:center">'+s+'</td><td style="padding:4px 3px;text-align:left;word-wrap:break-word;word-break:break-all">'+esc(qi.name)+'</td><td style="padding:4px 3px;text-align:center">'+qi.quantity+'</td><td style="padding:4px 3px;text-align:center">'+esc(qi.unit)+'</td><td style="padding:4px 3px;text-align:center;white-space:nowrap">¥'+fmt(qi.unitPrice)+'</td><td style="padding:4px 3px;text-align:center;font-weight:600;white-space:nowrap">¥'+fmt(qi.quantity*qi.unitPrice)+'</td><td style="padding:4px 3px;color:#666;font-size:9px;text-align:left;word-wrap:break-word;word-break:break-all">'+esc(qi.description||'')+'</td></tr>';
   }
@@ -685,4 +692,88 @@ function exportCategoryQuote(categoryId) {
   XLSX.utils.book_append_sheet(wb, ws, mc.name);
   XLSX.writeFile(wb, mc.name + '报价单-' + (ci.address || '详细') + '版.xlsx');
   showToast('已导出' + mc.name + '报价单');
+}
+
+function saveAsHTML(customFileName) {
+  if (!S.currentFileId) {
+    showToast('请先打开报价文件');
+    return;
+  }
+  
+  saveCurrentFile();
+  
+  var file = S.files.find(function(f) { return f.id === S.currentFileId; });
+  if (!file) return;
+  
+  var fileName = customFileName || file.name;
+  
+  var dataToSave = JSON.stringify({
+    version: 1,
+    type: file.type,
+    data: file.data,
+    savedAt: Date.now()
+  });
+  
+  var htmlContent = '<!DOCTYPE html>\n' +
+    '<html lang="zh-CN">\n' +
+    '<head>\n' +
+    '<meta charset="UTF-8">\n' +
+    '<meta name="viewport" content="width=device-width, initial-scale=1.0">\n' +
+    '<title>' + (fileName || '报价文件') + '</title>\n' +
+    '<style>\n' +
+    'body{font-family:"Microsoft YaHei",sans-serif;background:#f5f5f5;padding:20px;}\n' +
+    '.container{max-width:800px;margin:0 auto;background:#fff;padding:40px;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.1);}\n' +
+    'h1{color:#333;text-align:center;margin-bottom:30px;}\n' +
+    '.info{background:#f8f9fa;padding:20px;border-radius:8px;margin-bottom:20px;}\n' +
+    '.info p{margin:8px 0;color:#555;}\n' +
+    '.btn{display:inline-block;padding:12px 24px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;text-decoration:none;margin-right:10px;transition:all 0.2s;}\n' +
+    '.btn:hover{background:#2563eb;}\n' +
+    '.btn-success{background:#10b981;}\n' +
+    '.btn-success:hover{background:#059669;}\n' +
+    '.buttons{text-align:center;margin-top:30px;}\n' +
+    '</style>\n' +
+    '</head>\n' +
+    '<body>\n' +
+    '<div class="container">\n' +
+    '<h1>📋 斑马精装报价文件</h1>\n' +
+    '<div class="info">\n' +
+    '<p><strong>文件名称：</strong>' + esc(fileName) + '</p>\n' +
+    '<p><strong>文件类型：</strong>' + (file.type === 'quotation' ? '报价文件' : '量房文件') + '</p>\n' +
+    '<p><strong>创建时间：</strong>' + formatDate(file.createdAt) + '</p>\n' +
+    '<p><strong>更新时间：</strong>' + formatDate(file.updatedAt) + '</p>\n' +
+    '<p><strong>保存时间：</strong>' + formatDate(Date.now()) + '</p>\n' +
+    '</div>\n' +
+    '<div class="buttons">\n' +
+    '<a href="#" class="btn" onclick="downloadData();return false;">💾 下载数据文件</a>\n' +
+    '<a href="quotation.html" class="btn btn-success">🏠 返回系统</a>\n' +
+    '</div>\n' +
+    '</div>\n' +
+    '<script>\n' +
+    'var quoteData = ' + dataToSave + ';\n' +
+    'function downloadData() {\n' +
+    '  var blob = new Blob([JSON.stringify(quoteData, null, 2)], {type: "application/json"});\n' +
+    '  var url = URL.createObjectURL(blob);\n' +
+    '  var a = document.createElement("a");\n' +
+    '  a.href = url;\n' +
+    '  a.download = "' + (fileName || '报价文件') + '_' + new Date().toISOString().split("T")[0] + '.json";\n' +
+    '  document.body.appendChild(a);\n' +
+    '  a.click();\n' +
+    '  document.body.removeChild(a);\n' +
+    '  URL.revokeObjectURL(url);\n' +
+    '}\n' +
+    '</script>\n' +
+    '<script type="application/json" id="quoteData">' + dataToSave + '</script>\n' +
+    '</body>\n' +
+    '</html>';
+  
+  var blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = (fileName || '报价文件') + '_' + new Date().toISOString().split('T')[0] + '.html';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('HTML文件已保存');
 }

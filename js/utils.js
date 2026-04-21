@@ -3,6 +3,10 @@ var FLOOR_ORDER = ['一楼', '二楼', '三楼', '四楼', '五楼', '负一楼'
 var _collapseState = {};
 
 function floorSortKey(f) {
+  if (typeof S !== 'undefined' && S.floorOrder && S.floorOrder.length > 0) {
+    var i = S.floorOrder.indexOf(f);
+    if (i >= 0) return i;
+  }
   var i = FLOOR_ORDER.indexOf(f);
   return i >= 0 ? i : 999;
 }

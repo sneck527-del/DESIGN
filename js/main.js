@@ -72,7 +72,8 @@ var S={
   ollamaUrl:'http://localhost:11434',ollamaModel:'',
   aiProvider:'ollama',aiApiKey:'',aiApiUrl:'https://api.deepseek.com',
   dirty:false,
-  undoStack:[],maxUndoSteps:50
+  undoStack:[],maxUndoSteps:50,
+  floorOrder:[]
 };
 function markDirty(){S.dirty=true}
 
@@ -112,7 +113,32 @@ function undo(){
   document.getElementById('customNotes').value=S.customNotes;
   showToast('已撤销');
 }
-function initDefaults(){if(!S.materials)S.materials=JSON.parse(JSON.stringify(DEFAULT_MATERIALS));if(!S.spaceTypes)S.spaceTypes=JSON.parse(JSON.stringify(DEFAULT_SPACE_TYPES));if(!S.fontSizes)S.fontSizes={table:12,header:12,project:14,description:11,input:11};if(!S.rowHeight)S.rowHeight=36;if(!S.colWidths)S.colWidths={}}
+function normalizeFloorName(name){
+  var floorMap={
+    '一层':'一楼','二层':'二楼','三层':'三楼','四层':'四楼','五层':'五楼',
+    '负一层':'负一楼','负二层':'负二楼','地下室':'负一楼','地下一层':'负一楼','地下二层':'负二楼',
+    '1层':'一楼','2层':'二楼','3层':'三楼','4层':'四楼','5层':'五楼',
+    '-1层':'负一楼','-2层':'负二楼'
+  };
+  var normalized=name.replace(/\s+/g,'');
+  return floorMap[normalized]||name;
+}
+function normalizeRoomName(name){
+  var roomMap={
+    '起居室':'客厅','会客室':'客厅','大厅':'客厅',
+    '主卧房':'主卧','主卧室':'主卧',
+    '次卧房':'次卧','次卧室':'次卧',
+    '儿童房':'儿童房','小孩房':'儿童房',
+    '书房':'书房','书室':'书房',
+    '厨房':'厨房','厨房间':'厨房',
+    '卫生间':'卫生间','洗手间':'卫生间','浴室':'卫生间',
+    '阳台':'阳台','露台':'阳台',
+    '餐厅':'餐厅','饭厅':'餐厅'
+  };
+  var normalized=name.replace(/\s+/g,'');
+  return roomMap[normalized]||name;
+}
+function initDefaults(){if(!S.fontSizes)S.fontSizes={table:14,header:14,project:16,description:15,input:13};if(!S.rowHeight)S.rowHeight=36;if(!S.colWidths)S.colWidths={};if(S.colWidths&&S.colWidths.price<90)S.colWidths.price=90}
 function compressImage(file,maxW,quality,cb){var reader=new FileReader();reader.onload=function(e){var img=new Image();img.onload=function(){var c=document.createElement('canvas');var ratio=Math.min(maxW/img.width,1);c.width=Math.round(img.width*ratio);c.height=Math.round(img.height*ratio);c.getContext('2d').drawImage(img,0,0,c.width,c.height);cb(c.toDataURL('image/jpeg',quality))};img.src=e.target.result};reader.readAsDataURL(file)}
 
 // ==================== FILE MANAGEMENT ====================
@@ -127,6 +153,7 @@ function openFile(id){
       S.customerInfo=Object.assign({name:'',phone:'',address:'',designer:'',designerPhone:'',plan:'luxury',quoteMode:'full',date:new Date().toISOString().split('T')[0],area:''},file.data.customerInfo||{});
       S.rooms=file.data.rooms||[];
       S.rooms.forEach(function(r){if(!r.floor)r.floor='一楼'});
+      S.floorOrder=file.data.floorOrder||[];
       S.quoteItems=file.data.quoteItems||[];
       S.productQuoteItems=file.data.productQuoteItems||[];
       S.customNotes=file.data.customNotes||'';
@@ -174,7 +201,8 @@ function saveCurrentFile(){
       customNotes:S.customNotes,
       workers:S.workers||[],
       constructionSchedule:S.constructionSchedule||[],
-      respectHolidays:S.respectHolidays!==false
+      respectHolidays:S.respectHolidays!==false,
+      floorOrder:S.floorOrder||[]
     }
   }else{
     if(S.msProjectName)file.name=S.msProjectName;
@@ -190,6 +218,107 @@ function saveCurrentFile(){
   saveSettings();
   renderSidebar();
   showToast('已保存')
+}
+
+function exportJSON(){
+  if(!S.currentFileId){showToast('请先打开报价文件');return}
+  var file=S.files.find(function(f){return f.id===S.currentFileId});
+  if(!file)return;
+  
+  // 确保数据最新
+  var exportData;
+  if(file.type==='quotation'){
+    exportData={
+      version:1,
+      type:'quotation_export',
+      exportDate:new Date().toISOString(),
+      customerInfo:S.customerInfo,
+      rooms:S.rooms,
+      quoteItems:S.quoteItems,
+      productQuoteItems:S.productQuoteItems,
+      customNotes:S.customNotes,
+      workers:S.workers||[],
+      constructionSchedule:S.constructionSchedule||[],
+      respectHolidays:S.respectHolidays!==false,
+      currentPlan:S.currentPlan,
+      managementFeeRate:S.managementFeeRate,
+      taxRate:S.taxRate,
+      garbageFee:S.garbageFee,
+      protectionFee:S.protectionFee,
+      floorOrder:S.floorOrder||[]
+    };
+  }else{
+    exportData={
+      version:1,
+      type:'measurement_export',
+      exportDate:new Date().toISOString(),
+      projectName:S.msProjectName,
+      customerInfo:S.msCustomerInfo,
+      rooms:S.msRooms
+    };
+  }
+  
+  var blob=new Blob([JSON.stringify(exportData,null,2)],{type:'application/json'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url;
+  var fileName=(file.type==='quotation'?(S.customerInfo.address||'报价单'):(S.msProjectName||'量房记录'))+'_'+new Date().toISOString().split('T')[0]+'.json';
+  a.download=fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('JSON文件已导出');
+}
+function importFromHTML(input){
+  var file = input.files[0];
+  if (!file) return;
+  
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var html = e.target.result;
+      var tempDiv = document.createElement('div');
+      tempDiv.innerHTML = html;
+      var dataScript = tempDiv.querySelector('#quoteData');
+      
+      if (!dataScript) {
+        showToast('无法读取HTML文件数据');
+        input.value = '';
+        return;
+      }
+      
+      var importData = JSON.parse(dataScript.textContent);
+      
+      if (!importData || !importData.data || !importData.type) {
+        showToast('HTML文件格式不正确');
+        input.value = '';
+        return;
+      }
+      
+      checkDirty(function() {
+        var newFile = {
+          id: uid(),
+          name: file.name.replace('.html', ''),
+          type: importData.type,
+          data: importData.data,
+          createdAt: importData.data.createdAt || Date.now(),
+          updatedAt: Date.now()
+        };
+        
+        S.files.push(newFile);
+        openFile(newFile.id);
+        saveFilesToStorage();
+        showToast('HTML文件导入成功！');
+        input.value = '';
+      });
+    } catch (err) {
+      console.error('导入HTML文件错误:', err);
+      showToast('导入HTML文件失败，请检查文件格式');
+      input.value = '';
+    }
+  };
+  reader.readAsText(file);
 }
 function saveAndExit(){
   saveCurrentFile();
@@ -214,6 +343,22 @@ function checkDirty(callback){
   }
 }
 function showSaveFileDialog(){var file=S.files.find(function(f){return f.id===S.currentFileId});if(!file)return;document.getElementById('saveFileBody').innerHTML='<div class="form-group"><label>文件名称</label><input id="saveFileNameInput" value="'+esc(file.name)+'"></div>';openModal('saveFileModal')}
+function showSaveAsDialog(){
+  if(!S.currentFileId){showToast('请先打开报价文件');return}
+  var file=S.files.find(function(f){return f.id===S.currentFileId});
+  if(!file)return;
+  document.getElementById('saveAsFileNameInput').value=file.name+'_副本';
+  openModal('saveAsModal');
+}
+function confirmSaveAs(){
+  var n=document.getElementById('saveAsFileNameInput').value.trim();
+  if(!n){showToast('请输入文件名');return}
+  if(!S.currentFileId){showToast('请先打开报价文件');return}
+  
+  closeModal('saveAsModal');
+  
+  saveAsHTML(n);
+}
 function confirmSaveFile(){
   var n=document.getElementById('saveFileNameInput').value.trim();
   if(!n)return;
@@ -1454,7 +1599,7 @@ function openImportDialog(){if(!S.currentFileId){showToast('请先打开报价')
 function selectImportFile(id){S.importSelectedFileId=id;document.querySelectorAll('.import-file-item').forEach(function(e){e.classList.remove('selected')});document.querySelector('.import-file-item[data-id="'+id+'"]').classList.add('selected');document.getElementById('importNextBtn').disabled=false}
 function showImportConfirmation(){if(!S.importSelectedFileId)return;var file=S.files.find(function(f){return f.id===S.importSelectedFileId});if(!file)return;var rooms=file.data.rooms||[];closeModal('importDialogModal');document.getElementById('importConfirmBody').innerHTML='<div style="margin-bottom:10px"><b>'+esc(file.name)+'</b></div><label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:12px;margin-bottom:10px"><input type="checkbox" id="importCheckAll" onchange="toggleImportCheckAll(this.checked)" checked> 全选 ('+rooms.length+')</label><div id="importRoomChecks">'+rooms.map(function(r){var st=S.spaceTypes.find(function(s){return s.id===r.spaceTypeId});var ex=[];if((r.doors||[]).length)ex.push((r.doors||[]).length+'门');if((r.windows||[]).length)ex.push((r.windows||[]).length+'窗');return '<div class="import-room-check"><label><input type="checkbox" class="import-room-cb" value="'+r.id+'" checked><div class="irc-info"><div class="irc-name">'+(st?st.icon:'')+' '+esc(r.name)+'</div><div class="irc-detail">'+r.area+'㎡ | 周长'+r.perimeter+'m | 高'+r.height+'m'+(ex.length?' | '+ex.join('·'):'')+'</div></div></label></div>'}).join('')+'</div>';openModal('importConfirmModal')}
 function toggleImportCheckAll(c){document.querySelectorAll('.import-room-cb').forEach(function(cb){cb.checked=c})}
-function doImportRooms(){if(!S.importSelectedFileId)return;var file=S.files.find(function(f){return f.id===S.importSelectedFileId});if(!file)return;var rooms=file.data.rooms||[];var sel=[];document.querySelectorAll('.import-room-cb:checked').forEach(function(cb){sel.push(cb.value)});if(!sel.length){showToast('请选择');return}var n=0;rooms.forEach(function(r){if(sel.indexOf(r.id)===-1)return;var nr={id:uid(),name:r.name,spaceTypeId:r.spaceTypeId,floor:r.floor||'一楼',area:r.area,perimeter:r.perimeter,height:r.height,doors:r.doors||[],windows:r.windows||[],hasEquipment:false,hasCustom:!!(r.customItems&&r.customItems.length),hasFeatureWall:false,equipmentItems:[],customItems:[],featureWallItems:[]};if(r.customItems&&r.customItems.length){nr.customItems=r.customItems.map(function(c){var lookupName=(c.name||'').replace('上柜','').replace('下柜','');var m=S.materials.find(function(x){return x.name===lookupName&&x.category==='定制产品'});var obj={name:c.name,type:c.type||'',length:c.length||0,height:c.height||0,unitPrice:m?m.prices[S.currentPlan]:0};if(c.quantity)obj.quantity=c.quantity;if(c.unit)obj.unit=c.unit;return obj})}S.rooms.push(nr);S.quoteItems=S.quoteItems.concat(generateRoomItems(nr));n++});closeModal('importConfirmModal');renderRoomList();renderQuoteTable();renderSummary();showToast('已导入'+n+'个房间');markDirty()}
+function doImportRooms(){if(!S.importSelectedFileId)return;var file=S.files.find(function(f){return f.id===S.importSelectedFileId});if(!file)return;var rooms=file.data.rooms||[];var sel=[];document.querySelectorAll('.import-room-cb:checked').forEach(function(cb){sel.push(cb.value)});if(!sel.length){showToast('请选择');return}var n=0;rooms.forEach(function(r){if(sel.indexOf(r.id)===-1)return;var nr={id:uid(),name:normalizeRoomName(r.name),spaceTypeId:r.spaceTypeId,floor:normalizeFloorName(r.floor||'一楼'),area:r.area,perimeter:r.perimeter,height:r.height,doors:r.doors||[],windows:r.windows||[],hasEquipment:false,hasCustom:!!(r.customItems&&r.customItems.length),hasFeatureWall:false,equipmentItems:[],customItems:[],featureWallItems:[]};if(r.customItems&&r.customItems.length){nr.customItems=r.customItems.map(function(c){var lookupName=(c.name||'').replace('上柜','').replace('下柜','');var m=S.materials.find(function(x){return x.name===lookupName&&x.category==='定制产品'});var obj={name:c.name,type:c.type||'',length:c.length||0,height:c.height||0,unitPrice:m?m.prices[S.currentPlan]:0};if(c.quantity)obj.quantity=c.quantity;if(c.unit)obj.unit=c.unit;return obj})}S.rooms.push(nr);S.quoteItems=S.quoteItems.concat(generateRoomItems(nr));n++});closeModal('importConfirmModal');renderRoomList();renderQuoteTable();renderSummary();showToast('已导入'+n+'个房间');markDirty()}
 
 // ==================== THEME & VIEW ====================
 function setTheme(t){
@@ -1495,7 +1640,9 @@ function openModal(id){document.getElementById(id).classList.add('active')}funct
 // ==================== CUSTOMER & ROOMS ====================
 function onCustChange(){pushUndoState();S.customerInfo={name:document.getElementById('custName').value,phone:document.getElementById('custPhone').value,address:document.getElementById('custAddress').value,designer:document.getElementById('custDesigner').value,designerPhone:document.getElementById('custDesignerPhone').value,plan:document.getElementById('custPlan').value,quoteMode:document.getElementById('custQuoteMode').value,date:document.getElementById('custDate').value,area:document.getElementById('custArea').value};if(S.customerInfo.plan&&S.currentPlan!==S.customerInfo.plan){S.currentPlan=S.customerInfo.plan;regenerateAllQuotes()}if(S.customerInfo.quoteMode!==S._prevQuoteMode){S._prevQuoteMode=S.customerInfo.quoteMode;regenerateAllQuotes()}regenerateUtilityItems();renderQuoteTable();renderSummary();markDirty()}
 function renderCustomerInfo(){document.getElementById('custName').value=S.customerInfo.name||'';document.getElementById('custPhone').value=S.customerInfo.phone||'';document.getElementById('custAddress').value=S.customerInfo.address||'';document.getElementById('custDesigner').value=S.customerInfo.designer||'';document.getElementById('custDesignerPhone').value=S.customerInfo.designerPhone||'';document.getElementById('custPlan').value=S.currentPlan;document.getElementById('custQuoteMode').value=S.customerInfo.quoteMode||'full';S._prevQuoteMode=S.customerInfo.quoteMode||'full';document.getElementById('custDate').value=S.customerInfo.date||'';document.getElementById('custArea').value=S.customerInfo.area||''}
-function renderRoomList(){var el=document.getElementById('roomList');if(!S.rooms.length){el.innerHTML='<div class="empty-state"><div class="icon">🏠</div><p>点击添加房间</p></div>';return}var fg={};S.rooms.forEach(function(r){var f=r.floor||'一楼';if(!fg[f])fg[f]=[];fg[f].push(r)});var floors=Object.keys(fg).sort(function(a,b){return floorSortKey(a)-floorSortKey(b)});var html='';floors.forEach(function(fl){html+='<div class="floor-header" onclick="toggleSidebarFloor(\''+esc(fl)+'\')" style="cursor:pointer"><span class="room-collapse-icon" id="sidebar-icon-'+esc(fl)+'">▼</span> 🏗️ '+esc(fl)+'</div>';fg[fl].forEach(function(r){var st=S.spaceTypes.find(function(s){return s.id===r.spaceTypeId});var wa=Math.max(0,r.perimeter*r.height-(r.doors||[]).reduce(function(s,d){return s+d.width*d.height},0)-(r.windows||[]).reduce(function(s,w){return s+w.width*w.height},0));var wallDeduct=0;if(r.hasCustom)(r.customItems||[]).forEach(function(cp){var t=cp.type||'';if(t==='护墙板'||t==='衣柜'){wallDeduct+=(cp.length||0)*(cp.height||0)}});if(r.hasFeatureWall)(r.featureWallItems||[]).forEach(function(fw){wallDeduct+=fw.area||0});wa=Math.max(0,wa-wallDeduct);var tags=[];if(r.hasEquipment)tags.push('设备');if(r.hasCustom)tags.push('定制');if(r.hasFeatureWall)tags.push('背景墙');html+='<div class="room-item" data-sidebar-floor="'+esc(fl)+'"><div class="room-item-header" onclick="toggleSidebarRoom(\''+r.id+'\')" style="cursor:pointer"><span class="room-item-name"><span class="room-collapse-icon" id="sidebar-icon-'+r.id+'">▼</span> '+(st?st.icon:'')+' '+esc(r.name)+'</span><span class="room-item-type">'+(st?st.name:'')+'</span></div><div class="room-item-details" id="sidebar-details-'+r.id+'"><div class="room-item-dims">面积: '+r.area+'㎡ | 周长: '+r.perimeter+'m | 高: '+r.height+'m</div><div class="room-item-areas"><div class="room-area-tag">地面 <span>'+r.area+'</span>㎡</div><div class="room-area-tag">墙面 <span>'+fmt(wa)+'</span>㎡</div><div class="room-area-tag">顶面 <span>'+r.area+'</span>㎡</div></div>'+(tags.length?'<div class="room-item-tags">'+tags.map(function(t){return'<span class="room-tag">'+t+'</span>'}).join('')+'</div>':'')+'<div class="room-item-actions"><div class="room-move-btns"><button class="room-move-btn" onclick="event.stopPropagation();moveRoom(\''+r.id+'\',-1)">▲</button><button class="room-move-btn" onclick="event.stopPropagation();moveRoom(\''+r.id+'\',1)">▼</button></div><button class="btn btn-outline btn-sm" onclick="event.stopPropagation();editRoom(\''+r.id+'\')">编辑</button><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteRoom(\''+r.id+'\')">删除</button></div></div></div>'})});el.innerHTML=html}
+function initFloorOrder(){if(!S.floorOrder||S.floorOrder.length===0){var fg={};S.rooms.forEach(function(r){var f=r.floor||'一楼';if(!fg[f])fg[f]=[];fg[f].push(r)});S.floorOrder=Object.keys(fg).sort(function(a,b){return floorSortKey(a)-floorSortKey(b)})}}
+function moveFloor(fl,dir){initFloorOrder();var idx=S.floorOrder.indexOf(fl);if(idx<0)return;var ni=idx+dir;if(ni<0||ni>=S.floorOrder.length)return;var tmp=S.floorOrder[idx];S.floorOrder[idx]=S.floorOrder[ni];S.floorOrder[ni]=tmp;renderRoomList();renderQuoteTable();markDirty()}
+function renderRoomList(){var el=document.getElementById('roomList');if(!S.rooms.length){el.innerHTML='<div class="empty-state"><div class="icon">🏠</div><p>点击添加房间</p></div>';return}initFloorOrder();var fg={};S.rooms.forEach(function(r){var f=r.floor||'一楼';if(!fg[f])fg[f]=[];fg[f].push(r)});var floors=S.floorOrder.filter(function(fl){return fg[fl]});var html='';floors.forEach(function(fl,fi){var isFirst=fi===0;var isLast=fi===floors.length-1;html+='<div class="floor-header"><div style="display:flex;justify-content:space-between;align-items:center"><div style="cursor:pointer" onclick="toggleSidebarFloor(\''+esc(fl)+'\')"><span class="room-collapse-icon" id="sidebar-icon-'+esc(fl)+'">▼</span> 🏗️ '+esc(fl)+'</div><div class="floor-move-btns" style="display:flex;gap:4px"><button class="floor-move-btn" onclick="event.stopPropagation();moveFloor(\''+esc(fl)+'\',-1)"'+(isFirst?' disabled':'')+'>▲</button><button class="floor-move-btn" onclick="event.stopPropagation();moveFloor(\''+esc(fl)+'\',1)"'+(isLast?' disabled':'')+'>▼</button></div></div></div>';fg[fl].forEach(function(r){var st=S.spaceTypes.find(function(s){return s.id===r.spaceTypeId});var wa=Math.max(0,r.perimeter*r.height-(r.doors||[]).reduce(function(s,d){return s+d.width*d.height},0)-(r.windows||[]).reduce(function(s,w){return s+w.width*w.height},0));var wallDeduct=0;if(r.hasCustom)(r.customItems||[]).forEach(function(cp){var t=cp.type||'';if(t==='护墙板'||t==='衣柜'){wallDeduct+=(cp.length||0)*(cp.height||0)}});if(r.hasFeatureWall)(r.featureWallItems||[]).forEach(function(fw){wallDeduct+=fw.area||0});wa=Math.max(0,wa-wallDeduct);var tags=[];if(r.hasEquipment)tags.push('设备');if(r.hasCustom)tags.push('定制');if(r.hasFeatureWall)tags.push('背景墙');html+='<div class="room-item" data-sidebar-floor="'+esc(fl)+'"><div class="room-item-header" onclick="toggleSidebarRoom(\''+r.id+'\')" style="cursor:pointer"><span class="room-item-name"><span class="room-collapse-icon" id="sidebar-icon-'+r.id+'">▼</span> '+(st?st.icon:'')+' '+esc(r.name)+'</span><span class="room-item-type">'+(st?st.name:'')+'</span></div><div class="room-item-details" id="sidebar-details-'+r.id+'"><div class="room-item-dims">面积: '+r.area+'㎡ | 周长: '+r.perimeter+'m | 高: '+r.height+'m</div><div class="room-item-areas"><div class="room-area-tag">地面 <span>'+r.area+'</span>㎡</div><div class="room-area-tag">墙面 <span>'+fmt(wa)+'</span>㎡</div><div class="room-area-tag">顶面 <span>'+r.area+'</span>㎡</div></div>'+(tags.length?'<div class="room-item-tags">'+tags.map(function(t){return'<span class="room-tag">'+t+'</span>'}).join('')+'</div>':'')+'<div class="room-item-actions"><div class="room-move-btns"><button class="room-move-btn" onclick="event.stopPropagation();moveRoom(\''+r.id+'\',-1)">▲</button><button class="room-move-btn" onclick="event.stopPropagation();moveRoom(\''+r.id+'\',1)">▼</button></div><button class="btn btn-outline btn-sm" onclick="event.stopPropagation();editRoom(\''+r.id+'\')">编辑</button><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteRoom(\''+r.id+'\')">删除</button></div></div></div>'})});el.innerHTML=html}
 function dwRow(d){return'<div class="door-win-row"><span>宽</span><input value="'+(d?d.width:'')+'" type="number" step="0.01"><span>× 高</span><input value="'+(d?d.height:'')+'" type="number" step="0.01"><span>m</span><button class="btn-x" onclick="this.parentElement.remove()">×</button></div>'}
 
 var MATERIAL_SPECS={
@@ -1614,7 +1761,34 @@ function importRoomsFromImage() {
                 reader.readAsDataURL(file);
             });
 
+            console.log('图片转base64完成，长度:', base64.length);
+
             showToast('正在识别图片内容...');
+
+            // 构建请求体
+            var requestBody = {
+                model: 'qwen3-vl-plus',
+                messages: [
+                    {
+                        role: 'user',
+                        content: [
+                            {
+                                type: 'image_url',
+                                image_url: {
+                                    url: base64
+                                }
+                            },
+                            {
+                                type: 'text',
+                                text: '请识别这张量房图片中的信息，提取所有房间的数据：\n1. 楼层：比如地下室、一层、二楼、负一楼等\n2. 房间名称：比如客厅、主卧、厨房、卫生间等\n3. 房间面积：单位是㎡，数字部分，保留2位小数\n4. 房间周长：单位是m，数字部分，保留2位小数\n5. 层高/楼层高度：单位是m，数字部分，保留2位小数，如果识别不到默认填2.8\n注意：面积和周长的文字通常是挨着的，和对应的房间名称关联。\n返回格式要求：严格返回JSON数组，不要其他任何文字内容，每个元素包含字段：\n- floor：字符串，楼层名称\n- name：字符串，房间名称\n- area：数字，面积\n- perimeter：数字，周长\n- height：数字，层高\n示例返回：[{"floor":"一层","name":"客厅","area":32.5,"perimeter":24.8,"height":2.8}]\n如果有多个房间，全部列出来。如果识别不到某个字段，可以留空或者填默认值。'
+                            }
+                        ]
+                    }
+                ],
+                max_tokens: 1024
+            };
+
+            console.log('请求体:', JSON.stringify(requestBody, null, 2));
 
             // 调用通义千问多模态API
             var response = await fetch('https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', {
@@ -1623,41 +1797,10 @@ function importRoomsFromImage() {
                     'Content-Type': 'application/json',
                     'Authorization': 'Bearer sk-cf06c70a90d44c3f9c9402927e4ee291'
                 },
-                body: JSON.stringify({
-                    model: 'qwen3.6-plus',
-                    messages: [
-                        {
-                            role: 'user',
-                            content: [
-                                {
-                                    type: 'image_url',
-                                    image_url: {
-                                        url: base64
-                                    }
-                                },
-                                {
-                                    type: 'text',
-                                    text: `请识别这张量房图片中的信息，提取所有房间的数据：
-1. 楼层：比如地下室、一层、二楼、负一楼等
-2. 房间名称：比如客厅、主卧、厨房、卫生间等
-3. 房间面积：单位是㎡，数字部分，保留2位小数
-4. 房间周长：单位是m，数字部分，保留2位小数
-5. 层高/楼层高度：单位是m，数字部分，保留2位小数，如果识别不到默认填2.8
-注意：面积和周长的文字通常是挨着的，和对应的房间名称关联。
-返回格式要求：严格返回JSON数组，不要其他任何文字内容，每个元素包含字段：
-- floor：字符串，楼层名称
-- name：字符串，房间名称
-- area：数字，面积
-- perimeter：数字，周长
-- height：数字，层高
-示例返回：[{"floor":"一层","name":"客厅","area":32.5,"perimeter":24.8,"height":2.8}]
-如果有多个房间，全部列出来。如果识别不到某个字段，可以留空或者填默认值。`
-                                }
-                            ]
-                        }
-                    ]
-                })
+                body: JSON.stringify(requestBody)
             });
+
+            console.log('API响应状态:', response.status, response.statusText);
 
             if (!response.ok) {
                 var err = await response.text();
@@ -1729,24 +1872,443 @@ function toggleSidebarFloor(floor){var items=document.querySelectorAll('[data-si
 function toggleSidebarRoom(roomId){var details=document.getElementById('sidebar-details-'+roomId);var icon=document.getElementById('sidebar-icon-'+roomId);if(!details)return;var isCollapsed=details.classList.contains('sidebar-collapsed');if(isCollapsed)details.classList.remove('sidebar-collapsed');else details.classList.add('sidebar-collapsed');if(icon)icon.textContent=isCollapsed?'▼':'▶'}
 
 // ==================== QUOTE GENERATION ====================
-function generateRoomItems(room){var items=[],fa=room.area,ca=room.area,da=(room.doors||[]).reduce(function(s,d){return s+d.width*d.height},0),wa2=(room.windows||[]).reduce(function(s,w){return s+w.width*w.height},0),wa=Math.max(0,room.perimeter*room.height-da-wa2),sk=Math.max(0,room.perimeter-(room.doors||[]).reduce(function(s,d){return s+d.width},0)),ww=(room.windows||[]).reduce(function(s,w){return s+w.width},0),dp=(room.doors||[]).reduce(function(s,d){return s+(d.width+d.height)*2},0),wp=(room.windows||[]).reduce(function(s,w){return s+(w.width+w.height)*2},0),ws=(room.windows||[]).length;
-var wallDeduct=0;
-if(room.hasCustom)(room.customItems||[]).forEach(function(cp){var t=cp.type||'';if(t==='护墙板'||t==='衣柜'){wallDeduct+=(cp.length||0)*(cp.height||0)}});
-wa=Math.max(0,wa-wallDeduct);
-var app=S.materials.filter(function(m){if(m.calcType==='building_area')return false;if(m.name==='窗帘盒制作')return false;if(!m.spaceTypeFilter||!m.spaceTypeFilter.length)return true;return m.spaceTypeFilter.includes(room.spaceTypeId)});
-var floorType=(room.floorMaterial&&room.floorMaterial.type)||'';var wallType=(room.wallMaterial&&room.wallMaterial.type)||'';var ceilingType=(room.ceilingMaterial&&room.ceilingMaterial.type)||'';
-var floorExcludeIds=[];var wallExcludeIds=[];var ceilingExcludeIds=[];
-if(floorType==='flooring'){floorExcludeIds=['m40','m41','m44','m46']}else if(floorType==='ceramic_tile'){floorExcludeIds=['m43','m44']}else if(floorType==='marble'){floorExcludeIds=['m40','m41','m43','m46']}
-if(wallType==='paint'){wallExcludeIds=['m42','m47','m71','m72','m73']}else if(wallType==='wallpaper'){wallExcludeIds=['m42','m47','m71','m72','m73']}else if(wallType==='wall_tile'){wallExcludeIds=['m71','m72','m73']}
-if(ceilingType==='none'){ceilingExcludeIds=['m50','m51','m80','m81']}
-app=app.filter(function(m){if(m.calcType==='floor_area'&&floorExcludeIds.indexOf(m.id)>=0)return false;if(m.calcType==='wall_area'&&wallExcludeIds.indexOf(m.id)>=0)return false;if(m.calcType==='ceiling_area'&&ceilingExcludeIds.indexOf(m.id)>=0)return false;return true});
-app.forEach(function(mat){var qty=0;switch(mat.calcType){case'wall_area':qty=wa;break;case'floor_area':qty=fa;break;case'ceiling_area':qty=ca;break;case'skirting':qty=sk;break;case'door_count':qty=(room.doors||[]).length;break;case'door_perimeter':qty=dp;break;case'window_perimeter':qty=wp;break;case'window_width':qty=ww;break;case'window_sill':qty=ws;break;case'item':qty=1;break;case'length_m':qty=ww;break}if(qty>0&&mat.prices[S.currentPlan]>0){var desc=mat.description||'';if(mat.processDetail&&mat.processDetail[S.currentPlan])desc=mat.processDetail[S.currentPlan];else if(mat.brand&&mat.brand!=='-')desc+=' | '+mat.brand;items.push({id:uid(),materialId:mat.id,roomId:room.id,name:mat.name,quantity:Math.round(qty*100)/100,unit:mat.unit,unitPrice:mat.prices[S.currentPlan],description:desc,category:mat.category})}});
-if(room.ceilingMaterial&&room.ceilingMaterial.type&&room.ceilingMaterial.type!=='none'){var cbMat=S.materials.find(function(m){return m.name==='窗帘盒制作'});if(cbMat&&cbMat.prices[S.currentPlan]>0&&ww>0){var cbDesc=cbMat.description||'';if(cbMat.processDetail&&cbMat.processDetail[S.currentPlan])cbDesc=cbMat.processDetail[S.currentPlan];else if(cbMat.brand&&cbMat.brand!=='-')cbDesc+=' | '+cbMat.brand;items.push({id:uid(),materialId:cbMat.id,roomId:room.id,name:cbMat.name,quantity:Math.round(ww*100)/100,unit:cbMat.unit,unitPrice:cbMat.prices[S.currentPlan],description:cbDesc,category:cbMat.category})}}
-if(room.hasEquipment)room.equipmentItems.forEach(function(eq){items.push({id:uid(),roomId:room.id,name:eq.name,quantity:eq.quantity,unit:eq.unit||'套',unitPrice:eq.unitPrice,description:eq.brand?'品牌: '+eq.brand:'',category:'设备产品'})});
-if(room.hasCustom)room.customItems.forEach(function(cp){var qty,unit,desc='';var type=cp.type||'';if(type==='特殊五金'||type==='特殊工艺'){qty=cp.quantity||1;unit=cp.unit||'项';desc=''}else if(type==='橱柜上柜'||type==='橱柜下柜'||type==='电视柜'||type==='踢脚线'){qty=cp.length||0;unit='m';desc='长度: '+cp.length+'m'}else{qty=Math.round((cp.length||0)*(cp.height||0)*100)/100;unit='㎡';desc='尺寸: '+(cp.length||0)+'×'+(cp.height||0)+'m'}var cat=type==='特殊五金'?'特殊五金':type==='特殊工艺'?'特殊工艺':'定制产品';items.push({id:uid(),roomId:room.id,name:cp.name,quantity:qty,unit:unit,unitPrice:cp.unitPrice,description:desc,category:cat})});
-if(room.hasFeatureWall)room.featureWallItems.forEach(function(fw){items.push({id:uid(),roomId:room.id,name:fw.name,quantity:fw.quantity,unit:fw.unit||'项',unitPrice:fw.unitPrice,description:'',category:'背景墙'})});
-return items}
-function regenerateAllQuotes(){S.quoteItems=[];S.rooms.forEach(function(r){S.quoteItems=S.quoteItems.concat(generateRoomItems(r))});regenerateUtilityItems();syncPricesFromMaterials();var qm=S.customerInfo.quoteMode||'full';if(qm==='full'){regenerateMainMaterialItems()}else{S.productQuoteItems=S.productQuoteItems.filter(function(q){return q.mainCategory!=='main_material'&&q.mainCategory!=='auxiliary'})}renderQuoteTable();renderSummary()}
+// 辅助函数：计算房间各项工程量
+function calculateRoomQuantities(room) {
+  try {
+    var fa = room.area; // 地面面积
+    var ca = room.area; // 顶面面积
+    
+    // 门洞面积（用于墙面计算）
+    var da = (room.doors || []).reduce(function(s, d) {
+      return s + (d.width || 0) * (d.height || 0);
+    }, 0);
+    
+    // 窗洞面积（用于墙面计算）
+    var wa2 = (room.windows || []).reduce(function(s, w) {
+      return s + (w.width || 0) * (w.height || 0);
+    }, 0);
+    
+    // 墙面面积（扣除门窗洞口）
+    var perimeter = room.perimeter || 0;
+    var height = room.height || 0;
+    var wa = Math.max(0, perimeter * height - da - wa2);
+    
+    // 踢脚线长度（扣除门洞宽度）
+    var sk = Math.max(0, perimeter - (room.doors || []).reduce(function(s, d) {
+      return s + (d.width || 0);
+    }, 0));
+    
+    // 窗宽度总和（用于窗帘盒计算）
+    var ww = (room.windows || []).reduce(function(s, w) {
+      return s + (w.width || 0);
+    }, 0);
+    
+    // 门周长总和（用于门套计算）
+    var dp = (room.doors || []).reduce(function(s, d) {
+      return s + ((d.width || 0) + (d.height || 0)) * 2;
+    }, 0);
+    
+    // 窗周长总和（用于窗套计算）
+    var wp = (room.windows || []).reduce(function(s, w) {
+      return s + ((w.width || 0) + (w.height || 0)) * 2;
+    }, 0);
+    
+    // 窗台板数量（等于窗户数量）
+    var ws = (room.windows || []).length;
+    
+    // 门数量
+    var dc = (room.doors || []).length;
+    
+    // 自定义项目（护墙板、衣柜）对墙面面积的扣除
+    var wallDeduct = 0;
+    if (room.hasCustom) {
+      (room.customItems || []).forEach(function(cp) {
+        var t = cp.type || '';
+        if (t === '护墙板' || t === '衣柜') {
+          wallDeduct += (cp.length || 0) * (cp.height || 0);
+        }
+      });
+    }
+    wa = Math.max(0, wa - wallDeduct);
+    
+    var quantities = {
+      floorArea: fa,
+      ceilingArea: ca,
+      wallArea: wa,
+      skirtingLength: sk,
+      windowWidthSum: ww,
+      doorPerimeterSum: dp,
+      windowPerimeterSum: wp,
+      windowSillCount: ws,
+      doorCount: dc
+    };
+    
+    if (window.DEBUG_MODE) {
+      console.log('[calculateRoomQuantities] 计算完成:', quantities);
+    }
+    
+    return quantities;
+  } catch (error) {
+    console.error('[calculateRoomQuantities] 计算工程量时发生错误:', error);
+    console.error('房间数据:', room);
+    // 返回默认值，避免后续计算失败
+    return {
+      floorArea: room.area || 0,
+      ceilingArea: room.area || 0,
+      wallArea: 0,
+      skirtingLength: 0,
+      windowWidthSum: 0,
+      doorPerimeterSum: 0,
+      windowPerimeterSum: 0,
+      windowSillCount: 0,
+      doorCount: 0
+    };
+  }
+}
+
+// 辅助函数：根据空间类型筛选材料
+function filterMaterialsBySpaceType(materials, spaceTypeId) {
+  return materials.filter(function(m) {
+    if (m.calcType === 'building_area') return false;
+    if (m.name === '窗帘盒制作') return false;
+    if (!m.spaceTypeFilter || !m.spaceTypeFilter.length) return true;
+    return m.spaceTypeFilter.includes(spaceTypeId);
+  });
+}
+
+// 材料排除规则配置（可配置化）
+var EXCLUSION_RULES = {
+  // 地面材料排除规则
+  floor: {
+    'flooring': ['m40', 'm41', 'm44', 'm46'],        // 选择地板时排除地砖、大理石等
+    'ceramic_tile': ['m43', 'm44'],                  // 选择瓷砖时排除木地板、大理石
+    'marble': ['m40', 'm41', 'm43', 'm46']           // 选择大理石时排除地砖、木地板等
+  },
+  // 墙面材料排除规则
+  wall: {
+    'paint': ['m42', 'm47', 'm71', 'm72', 'm73'],    // 选择涂料时排除墙砖、石材等
+    'wallpaper': ['m42', 'm47', 'm71', 'm72', 'm73'], // 选择墙纸时排除墙砖、石材等
+    'wall_tile': ['m71', 'm72', 'm73']                // 选择墙砖时排除墙面石材
+  },
+  // 顶面材料排除规则
+  ceiling: {
+    'none': ['m50', 'm51', 'm80', 'm81']             // 选择无吊顶时排除所有吊顶材料
+  }
+};
+
+// 辅助函数：获取材料排除ID列表（使用配置化规则）
+function getExclusionIds(floorType, wallType, ceilingType) {
+  var floorExcludeIds = [];
+  var wallExcludeIds = [];
+  var ceilingExcludeIds = [];
+  
+  // 从配置中获取排除ID列表，如果不存在则返回空数组
+  if (floorType && EXCLUSION_RULES.floor[floorType]) {
+    floorExcludeIds = EXCLUSION_RULES.floor[floorType];
+  }
+  
+  if (wallType && EXCLUSION_RULES.wall[wallType]) {
+    wallExcludeIds = EXCLUSION_RULES.wall[wallType];
+  }
+  
+  if (ceilingType && EXCLUSION_RULES.ceiling[ceilingType]) {
+    ceilingExcludeIds = EXCLUSION_RULES.ceiling[ceilingType];
+  }
+  
+  return {
+    floorExcludeIds: floorExcludeIds,
+    wallExcludeIds: wallExcludeIds,
+    ceilingExcludeIds: ceilingExcludeIds
+  };
+}
+
+// 辅助函数：应用材料排除规则
+function applyExclusions(materials, floorExcludeIds, wallExcludeIds, ceilingExcludeIds) {
+  return materials.filter(function(m) {
+    if (m.calcType === 'floor_area' && floorExcludeIds.indexOf(m.id) >= 0) return false;
+    if (m.calcType === 'wall_area' && wallExcludeIds.indexOf(m.id) >= 0) return false;
+    if (m.calcType === 'ceiling_area' && ceilingExcludeIds.indexOf(m.id) >= 0) return false;
+    return true;
+  });
+}
+
+// 辅助函数：生成材料报价项目
+function generateMaterialItems(materials, quantities, plan, room) {
+  var items = [];
+  materials.forEach(function(mat) {
+    var qty = 0;
+    switch (mat.calcType) {
+      case 'wall_area': qty = quantities.wallArea; break;
+      case 'floor_area': qty = quantities.floorArea; break;
+      case 'ceiling_area': qty = quantities.ceilingArea; break;
+      case 'skirting': qty = quantities.skirtingLength; break;
+      case 'door_count': qty = quantities.doorCount; break;
+      case 'door_perimeter': qty = quantities.doorPerimeterSum; break;
+      case 'window_perimeter': qty = quantities.windowPerimeterSum; break;
+      case 'window_width': qty = quantities.windowWidthSum; break;
+      case 'window_sill': qty = quantities.windowSillCount; break;
+      case 'item': qty = 1; break;
+      case 'length_m': qty = quantities.windowWidthSum; break;
+    }
+    
+    if (qty > 0 && mat.prices[plan] > 0) {
+      var desc = mat.description || '';
+      if (mat.processDetail && mat.processDetail[plan]) {
+        desc = mat.processDetail[plan];
+      } else if (mat.brand && mat.brand !== '-') {
+        desc += ' | ' + mat.brand;
+      }
+      
+      items.push({
+        id: uid(),
+        materialId: mat.id,
+        roomId: room.id,
+        name: mat.name,
+        quantity: Math.round(qty * 100) / 100,
+        unit: mat.unit,
+        unitPrice: mat.prices[plan],
+        description: desc,
+        category: mat.category
+      });
+    }
+  });
+  return items;
+}
+
+function generateRoomItems(room) {
+  try {
+    var items = [];
+    
+    // 调试日志：开始生成房间报价项目
+    if (window.DEBUG_MODE) {
+      console.log('[generateRoomItems] 开始生成房间报价项目，房间ID:', room.id, '空间类型:', room.spaceTypeId);
+    }
+    
+    // 1. 计算工程量
+    var quantities = calculateRoomQuantities(room);
+    if (window.DEBUG_MODE) {
+      console.log('[generateRoomItems] 工程量计算完成:', quantities);
+    }
+    
+    // 2. 根据空间类型筛选材料
+    var filteredMaterials = filterMaterialsBySpaceType(S.materials, room.spaceTypeId);
+    if (window.DEBUG_MODE) {
+      console.log('[generateRoomItems] 空间类型筛选后材料数量:', filteredMaterials.length);
+    }
+    
+    // 3. 获取材料排除ID列表
+    var floorType = (room.floorMaterial && room.floorMaterial.type) || '';
+    var wallType = (room.wallMaterial && room.wallMaterial.type) || '';
+    var ceilingType = (room.ceilingMaterial && room.ceilingMaterial.type) || '';
+    if (window.DEBUG_MODE) {
+      console.log('[generateRoomItems] 材料选择类型:', { floorType: floorType, wallType: wallType, ceilingType: ceilingType });
+    }
+    
+    var exclusionIds = getExclusionIds(floorType, wallType, ceilingType);
+    if (window.DEBUG_MODE) {
+      console.log('[generateRoomItems] 排除ID列表:', exclusionIds);
+    }
+    
+    // 4. 应用排除规则
+    var applicableMaterials = applyExclusions(
+      filteredMaterials,
+      exclusionIds.floorExcludeIds,
+      exclusionIds.wallExcludeIds,
+      exclusionIds.ceilingExcludeIds
+    );
+    if (window.DEBUG_MODE) {
+      console.log('[generateRoomItems] 应用排除规则后材料数量:', applicableMaterials.length);
+    }
+    
+    // 5. 生成材料报价项目
+    var materialItems = generateMaterialItems(applicableMaterials, quantities, S.currentPlan, room);
+    if (window.DEBUG_MODE) {
+      console.log('[generateRoomItems] 生成材料项目数量:', materialItems.length);
+    }
+    items = items.concat(materialItems);
+    
+    // 6. 生成窗帘盒项目（如果有吊顶且不是无吊顶）
+    if (room.ceilingMaterial && room.ceilingMaterial.type && room.ceilingMaterial.type !== 'none') {
+      var curtainBoxMat = S.materials.find(function(m) { return m.name === '窗帘盒制作'; });
+      if (curtainBoxMat && curtainBoxMat.prices[S.currentPlan] > 0 && quantities.windowWidthSum > 0) {
+        var cbDesc = curtainBoxMat.description || '';
+        if (curtainBoxMat.processDetail && curtainBoxMat.processDetail[S.currentPlan]) {
+          cbDesc = curtainBoxMat.processDetail[S.currentPlan];
+        } else if (curtainBoxMat.brand && curtainBoxMat.brand !== '-') {
+          cbDesc += ' | ' + curtainBoxMat.brand;
+        }
+        items.push({
+          id: uid(),
+          materialId: curtainBoxMat.id,
+          roomId: room.id,
+          name: curtainBoxMat.name,
+          quantity: Math.round(quantities.windowWidthSum * 100) / 100,
+          unit: curtainBoxMat.unit,
+          unitPrice: curtainBoxMat.prices[S.currentPlan],
+          description: cbDesc,
+          category: curtainBoxMat.category
+        });
+        if (window.DEBUG_MODE) {
+          console.log('[generateRoomItems] 添加窗帘盒项目');
+        }
+      }
+    }
+    
+    // 7. 生成设备项目
+    if (room.hasEquipment) {
+      room.equipmentItems.forEach(function(eq) {
+        items.push({
+          id: uid(),
+          roomId: room.id,
+          name: eq.name,
+          quantity: eq.quantity,
+          unit: eq.unit || '套',
+          unitPrice: eq.unitPrice,
+          description: eq.brand ? '品牌: ' + eq.brand : '',
+          category: '设备产品'
+        });
+      });
+      if (window.DEBUG_MODE) {
+        console.log('[generateRoomItems] 添加设备项目数量:', room.equipmentItems.length);
+      }
+    }
+    
+    // 8. 生成自定义项目
+    if (room.hasCustom) {
+      room.customItems.forEach(function(cp) {
+        var qty, unit, desc = '';
+        var type = cp.type || '';
+        if (type === '特殊五金' || type === '特殊工艺') {
+          qty = cp.quantity || 1;
+          unit = cp.unit || '项';
+          desc = '';
+        } else if (type === '橱柜上柜' || type === '橱柜下柜' || type === '电视柜' || type === '踢脚线') {
+          qty = cp.length || 0;
+          unit = 'm';
+          desc = '长度: ' + cp.length + 'm';
+        } else {
+          qty = Math.round((cp.length || 0) * (cp.height || 0) * 100) / 100;
+          unit = '㎡';
+          desc = '尺寸: ' + (cp.length || 0) + '×' + (cp.height || 0) + 'm';
+        }
+        var cat = type === '特殊五金' ? '特殊五金' : type === '特殊工艺' ? '特殊工艺' : '定制产品';
+        items.push({
+          id: uid(),
+          roomId: room.id,
+          name: cp.name,
+          quantity: qty,
+          unit: unit,
+          unitPrice: cp.unitPrice,
+          description: desc,
+          category: cat
+        });
+      });
+      if (window.DEBUG_MODE) {
+        console.log('[generateRoomItems] 添加自定义项目数量:', room.customItems.length);
+      }
+    }
+    
+    // 9. 生成背景墙项目
+    if (room.hasFeatureWall) {
+      room.featureWallItems.forEach(function(fw) {
+        items.push({
+          id: uid(),
+          roomId: room.id,
+          name: fw.name,
+          quantity: fw.quantity,
+          unit: fw.unit || '项',
+          unitPrice: fw.unitPrice,
+          description: '',
+          category: '背景墙'
+        });
+      });
+      if (window.DEBUG_MODE) {
+        console.log('[generateRoomItems] 添加背景墙项目数量:', room.featureWallItems.length);
+      }
+    }
+    
+    if (window.DEBUG_MODE) {
+      console.log('[generateRoomItems] 报价项目生成完成，总项目数:', items.length);
+    }
+    
+    return items;
+  } catch (error) {
+    console.error('[generateRoomItems] 生成房间报价项目时发生错误:', error);
+    console.error('房间数据:', room);
+    // 返回空数组，避免影响其他房间的报价生成
+    return [];
+  }
+}
+// 漏项检查机制
+var REQUIRED_ITEMS_MAP = {
+  // 卫生间必做项目
+  'st_bathroom': [
+    { name: '等电位连接', materialId: 'm25' },
+    { name: '防水处理', materialId: 'm30' },
+    { name: '墙面瓷砖铺贴', materialId: 'm42' },
+    { name: '铝扣板吊顶', materialId: 'm80' }
+  ],
+  // 厨房必做项目
+  'st_kitchen': [
+    { name: '防水处理', materialId: 'm30' },
+    { name: '墙面瓷砖铺贴', materialId: 'm42' },
+    { name: '铝扣板吊顶', materialId: 'm80' }
+  ],
+  // 阳台必做项目
+  'st_balcony': [
+    { name: '防水处理', materialId: 'm30' }
+  ]
+};
+
+// 检查缺失的必做项目
+function checkForMissingItems() {
+  var missingItems = [];
+  
+  S.rooms.forEach(function(room) {
+    var spaceTypeId = room.spaceTypeId;
+    var requiredItems = REQUIRED_ITEMS_MAP[spaceTypeId];
+    if (!requiredItems || !requiredItems.length) return;
+    
+    // 获取该房间的所有报价项目
+    var roomItems = S.quoteItems.filter(function(item) {
+      return item.roomId === room.id;
+    });
+    
+    requiredItems.forEach(function(req) {
+      var found = roomItems.some(function(item) {
+        // 通过materialId或name匹配
+        return item.materialId === req.materialId || item.name === req.name;
+      });
+      
+      if (!found) {
+        missingItems.push({
+          roomId: room.id,
+          roomName: room.name,
+          spaceTypeId: spaceTypeId,
+          requiredItem: req
+        });
+      }
+    });
+  });
+  
+  if (missingItems.length > 0) {
+    console.warn('⚠️ 发现缺失的必做项目:', missingItems);
+    
+    // 在调试模式下显示详细信息
+    if (window.DEBUG_MODE) {
+      missingItems.forEach(function(missing) {
+        console.warn('房间 "' + missing.roomName + '" (' + missing.spaceTypeId + ') 缺少: ' + missing.requiredItem.name);
+      });
+    }
+    
+    // 可以在这里添加UI提示，例如显示警告消息
+    // showMissingItemsWarning(missingItems);
+  }
+  
+  return missingItems;
+}
+
+function regenerateAllQuotes(){S.quoteItems=[];S.rooms.forEach(function(r){S.quoteItems=S.quoteItems.concat(generateRoomItems(r))});regenerateUtilityItems();syncPricesFromMaterials();var qm=S.customerInfo.quoteMode||'full';if(qm==='full'){regenerateMainMaterialItems()}else{S.productQuoteItems=S.productQuoteItems.filter(function(q){return q.mainCategory!=='main_material'&&q.mainCategory!=='auxiliary'})}checkForMissingItems();renderQuoteTable();renderSummary()}
 function regenerateMainMaterialItems(){S.productQuoteItems=S.productQuoteItems.filter(function(q){return q.mainCategory!=='main_material'&&q.mainCategory!=='auxiliary'});var mmProducts=S.products.filter(function(p){return p.mainCategory==='main_material'});if(!mmProducts.length)return;var fg={};S.rooms.forEach(function(r){var f=r.floor||'一楼';if(!fg[f])fg[f]=[];fg[f].push(r)});Object.keys(fg).forEach(function(fl){fg[fl].forEach(function(room){mmProducts.forEach(function(prod){var qty=0;var st=room.spaceTypeId||'';if(prod.subCategory==='pm_tiles'){if(st==='st_bathroom'||st==='st_kitchen')qty=room.area}else if(prod.subCategory==='pm_flooring'){if(st!=='st_bathroom'&&st!=='st_kitchen')qty=room.area}else if(prod.subCategory==='pm_sanitary'){if(st==='st_bathroom')qty=1}else if(prod.subCategory==='pm_doors'){qty=(room.doors||[]).length}else if(prod.subCategory==='pm_paint'){qty=room.area}else if(prod.subCategory==='pm_wallpaper'){qty=room.area}else if(prod.subCategory==='pm_lighting'){qty=1}else if(prod.subCategory==='pm_switches'){qty=1}else if(prod.subCategory==='pm_hardware'){qty=1}else if(prod.subCategory==='pm_skirting'){qty=1}if(qty>0&&prod.unitPrice>0){var ex=S.productQuoteItems.find(function(q){return q.productId===prod.id&&q.roomId===room.id});if(!ex){S.productQuoteItems.push({id:uid(),productId:prod.id,roomId:room.id,name:prod.name,brand:prod.brand,model:prod.model,mainCategory:'main_material',subCategory:prod.subCategory,specifications:prod.specifications,material:prod.material,color:prod.color,quantity:qty,unit:prod.unit,unitPrice:prod.unitPrice,description:prod.description||'',notes:prod.notes||'',photo:prod.photo||''})}}})})})}
 function regenerateUtilityItems(){S.quoteItems=S.quoteItems.filter(function(q){return q.roomId!=='__utility__'});var area=parseFloat(S.customerInfo.area)||0;if(!area)return;S.materials.filter(function(m){return m.calcType==='building_area'}).forEach(function(mat){var qty=area;if(mat.name.includes('开关'))qty=Math.round(area/3);if(mat.prices[S.currentPlan]<=0)return;var desc=mat.description||'';if(mat.processDetail&&mat.processDetail[S.currentPlan])desc=mat.processDetail[S.currentPlan];S.quoteItems.push({id:uid(),materialId:mat.id,roomId:'__utility__',name:mat.name,quantity:Math.round(qty*100)/100,unit:mat.unit,unitPrice:mat.prices[S.currentPlan],description:desc,category:mat.category})})}
 function syncPricesFromMaterials(){S.quoteItems.forEach(function(qi){if(qi.materialId){var m=S.materials.find(function(x){return x.id===qi.materialId});if(m){if(m.prices[S.currentPlan]>0)qi.unitPrice=m.prices[S.currentPlan];var desc=m.description||'';if(m.processDetail&&m.processDetail[S.currentPlan])desc=m.processDetail[S.currentPlan];else if(m.brand&&m.brand!=='-')desc+=' | '+m.brand;qi.description=desc;qi.name=m.name;qi.unit=m.unit;qi.category=m.category}}})}
@@ -1754,7 +2316,8 @@ function syncPricesFromProducts(){S.productQuoteItems.forEach(function(qi){if(qi
 
 // ==================== QUOTE TABLE ====================
 function renderQuoteTable(){var w=document.getElementById('quoteTableWrapper');var qm=S.customerInfo.quoteMode||'full';var addBtn=document.getElementById('addProductBtn');if(addBtn)addBtn.style.display=qm==='full'?'':'none';if(!S.rooms.length&&!S.quoteItems.length&&!S.productQuoteItems.length){w.innerHTML='<div class="empty-state"><div class="icon">📋</div><p>添加房间后自动生成</p></div>';return}
-var h='<table class="quote-table"><thead><tr><th class="col-num resizable" data-col="num">序号</th><th class="col-name resizable" data-col="name">项目</th><th class="col-qty resizable" data-col="qty">数量</th><th class="col-unit resizable" data-col="unit">单位</th><th class="col-price resizable" data-col="price">单价</th><th class="col-amount resizable" data-col="amount">金额</th><th class="col-desc resizable" data-col="desc">说明</th><th class="col-action no-print">操作</th></tr></thead><tbody>';
+if(!S.qiSelectedIds) S.qiSelectedIds = [];
+var h='<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border);margin-bottom:8px"><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="qiSelectAll" onchange="toggleQISelectAll()" style="cursor:pointer"> <span>全选</span></label><button class="btn btn-danger btn-sm" onclick="deleteSelectedQI()" id="qiDeleteSelectedBtn" disabled style="font-size:11px;padding:3px 8px">🗑️ 删除已选 (<span id="qiSelectedCount">0</span>)</button></div><table class="quote-table"><thead><tr><th class="col-select no-print" style="width:40px;text-align:center"><input type="checkbox" id="qiSelectAll2" onchange="toggleQISelectAll()" style="cursor:pointer"></th><th class="col-num resizable" data-col="num">序号</th><th class="col-name resizable" data-col="name">项目</th><th class="col-qty resizable" data-col="qty">数量</th><th class="col-unit resizable" data-col="unit">单位</th><th class="col-price resizable" data-col="price" style="width:100px">单价</th><th class="col-amount resizable" data-col="amount">金额</th><th class="col-desc resizable" data-col="desc">说明</th><th class="col-action no-print">操作</th></tr></thead><tbody>';
 var catOrd=['防水工程','泥瓦工程','木作工程','油漆工程','墙面工程','地面工程','顶面工程','门窗工程','暖气改造','下水改造','安装工程','楼梯工程','设备产品','定制产品','特殊五金','特殊工艺','背景墙','自定义'];
 var fg={};S.rooms.forEach(function(r){var f=r.floor||'一楼';if(!fg[f])fg[f]=[];fg[f].push(r)});
 var floors=Object.keys(fg).sort(function(a,b){return floorSortKey(a)-floorSortKey(b)});
@@ -1768,7 +2331,7 @@ h+='<tr class="floor-row" onclick="toggleRoomCollapse(\''+sec.id+'\')" style="cu
 if(sec.type==='floor'){sec.rooms.forEach(function(room){var ri=sec.items.filter(function(q){return q.roomId===room.id});if(!ri.length)return;var rT=ri.reduce(function(s,q){return s+q.quantity*q.unitPrice},0);var seq=1;var roomCol=_collapseState[room.id];var roomCls=secCol||roomCol?' collapsed':'';
 h+='<tr class="sub-row room-toggle room-item-row'+roomCls+'" data-room-id="'+sec.id+'" onclick="toggleRoomCollapse(\''+room.id+'\')"><td colspan="6" style="padding-left:14px;cursor:pointer;text-align:left"><span class="room-collapse-icon" id="icon-'+room.id+'">'+(roomCol?'▶':'▼')+'</span> 📍 '+esc(room.name)+'</td><td style="text-align:right;font-weight:600;color:var(--accent)">¥'+fmt(rT)+'</td><td class="no-print"></td></tr>';
 var itemCls=secCol||roomCol?' collapsed':'';
-catOrd.forEach(function(cat){var ci=ri.filter(function(q){return q.category===cat});if(!ci.length)return;var cT=ci.reduce(function(s,q){return s+q.quantity*q.unitPrice},0);h+='<tr class="room-item-row'+itemCls+'" data-room-id="'+sec.id+'" data-room-id2="'+room.id+'"><td colspan="6" style="text-align:left;padding-left:20px;font-size:10px;color:var(--text-dim);border-bottom:1px solid var(--border)">▸ '+cat+'</td><td style="text-align:right;font-size:10px;color:var(--text-dim);border-bottom:1px solid var(--border)">¥'+fmt(cT)+'</td><td class="no-print"></td></tr>';ci.forEach(function(qi){h+=qRow(qi,seq++,sec.id,room.id)})});h+='<tr class="room-item-row no-print'+itemCls+'" data-room-id="'+sec.id+'" data-room-id2="'+room.id+'"><td colspan="8" style="text-align:left;padding-left:24px;padding-top:2px;padding-bottom:2px"><button class="btn btn-outline btn-sm" style="font-size:10px;padding:1px 8px;border-radius:4px" onclick="showRoomItemPicker(\''+room.id+'\')">+ 添加项目</button><div id="picker-'+room.id+'" style="display:none;margin-top:4px"></div></td></tr>'})}else{var seq=1;sec.items.forEach(function(q){h+=qRow(q,seq++,sec.id)})}});
+catOrd.forEach(function(cat){var ci=ri.filter(function(q){return q.category===cat});if(!ci.length)return;var cT=ci.reduce(function(s,q){return s+q.quantity*q.unitPrice},0);h+='<tr class="room-item-row'+itemCls+'" data-room-id="'+sec.id+'" data-room-id2="'+room.id+'"><td colspan="6" style="text-align:left;padding-left:20px;font-size:10px;color:var(--text-dim);border-bottom:1px solid var(--border)">▸ '+cat+'</td><td style="text-align:right;font-size:10px;color:var(--text-dim);border-bottom:1px solid var(--border)">¥'+fmt(cT)+'</td><td class="no-print"></td></tr>';ci.forEach(function(qi){h+=qRow(qi,seq++,sec.id,room.id)})});h+='<tr class="room-item-row no-print'+itemCls+'" data-room-id="'+sec.id+'" data-room-id2="'+room.id+'"><td colspan="8" style="text-align:left;padding-left:24px;padding-top:2px;padding-bottom:2px"><button class="btn btn-outline btn-sm" style="font-size:14px;padding:1px 8px;border-radius:4px" onclick="showRoomItemPicker(\''+room.id+'\')">+ 添加项目</button><div id="picker-'+room.id+'" style="display:none;margin-top:4px"></div></td></tr>'})}else{var seq=1;sec.items.forEach(function(q){h+=qRow(q,seq++,sec.id)})}});
 var ci2=S.quoteItems.filter(function(q){return q.roomId==='__custom__'});
 if(ci2.length){var cs=1;
 h+='<tr class="cat-row"><td colspan="6" style="text-align:left;font-weight:600;color:var(--text)">📝 自定义</td><td></td><td></td><td class="no-print"></td></tr>';
@@ -1781,8 +2344,12 @@ h+='<tr class="cat-row"><td colspan="6" style="text-align:left;font-weight:600;c
 var subG={};pi.forEach(function(q){if(!subG[q.subCategory])subG[q.subCategory]=[];subG[q.subCategory].push(q)});
 Object.keys(subG).forEach(function(subId){var subI=subG[subId];var sT=subI.reduce(function(s,q){return s+q.quantity*q.unitPrice},0);
 h+='<tr><td colspan="6" style="text-align:left;padding-left:20px;font-size:10px;color:var(--text-dim);border-bottom:1px solid var(--border)">▸ '+getSubCatLabel(mc.id,subId)+'</td><td style="text-align:right;font-size:10px;color:var(--text-dim);border-bottom:1px solid var(--border)">¥'+fmt(sT)+'</td><td class="no-print"></td></tr>';
-subI.forEach(function(q){h+=qRow(q,ps++)})})})}h+='<tr><td colspan="7" style="text-align:right;padding-right:12px"><button class="btn btn-outline btn-sm no-print" onclick="addCustomQuoteItem()">+ 自定义</button></td><td class="no-print"></td></tr>';h+='</tbody></table>';w.innerHTML=h}
-function qRow(qi,seq,sectionId,roomId){var a=qi.quantity*qi.unitPrice;var cls='room-item-row';var attrs=' data-room-id="'+sectionId+'"';if(roomId)attrs+=' data-room-id2="'+roomId+'"';var secCol=_collapseState[sectionId];var roomCol=roomId?_collapseState[roomId]:false;if(secCol||roomCol)cls+=' collapsed';return '<tr class="'+cls+'"'+attrs+'><td>'+seq+'</td><td style="text-align:left;padding:4px 6px"><div class="qt-input qt-name" contenteditable="true" onblur="updateQI(\''+qi.id+'\',\'name\',this.textContent)">'+esc(qi.name)+'</div></td><td><input class="qt-input qt-qty" type="number" value="'+qi.quantity+'" step="0.01" onchange="updateQI(\''+qi.id+'\',\'quantity\',this.value)" style="text-align:center"></td><td><input class="qt-input qt-unit" value="'+esc(qi.unit)+'" onchange="updateQI(\''+qi.id+'\',\'unit\',this.value)" style="text-align:center"></td><td><div style="display:flex;align-items:center;justify-content:center"><span style="color:var(--text-dim);margin-right:0">¥</span><input class="qt-input qt-price" type="number" value="'+qi.unitPrice+'" step="0.01" onchange="updateQI(\''+qi.id+'\',\'unitPrice\',this.value)" style="text-align:center;padding-left:2px"></div></td><td class="col-amount">¥'+fmt(a)+'</td><td class="col-desc" style="text-align:left;padding:4px 6px"><div class="qt-input qt-desc" contenteditable="true" onblur="updateQI(\''+qi.id+'\',\'description\',this.textContent)">'+esc(qi.description||'')+'</div></td><td class="col-action no-print" style="text-align:center;vertical-align:middle"><button class="btn-x" onclick="deleteQI(\''+qi.id+'\')">×</button></td></tr>'}
+subI.forEach(function(q){h+=qRow(q,ps++)})})})}h+='</tbody></table>';w.innerHTML=h;updateQISelectionUI();}
+function qRow(qi,seq,sectionId,roomId){var a=qi.quantity*qi.unitPrice;var cls='room-item-row';var attrs=' data-room-id="'+sectionId+'"';if(roomId)attrs+=' data-room-id2="'+roomId+'"';var secCol=_collapseState[sectionId];var roomCol=roomId?_collapseState[roomId]:false;if(secCol||roomCol)cls+=' collapsed';var isSelected=S.qiSelectedIds && S.qiSelectedIds.includes(qi.id);return '<tr class="'+cls+'"'+attrs+'><td class="no-print" style="text-align:center;vertical-align:middle"><input type="checkbox" onclick="event.stopPropagation();toggleQISelection(\''+qi.id+'\')" '+(isSelected?'checked':'')+' style="cursor:pointer;width:16px;height:16px"></td><td>'+seq+'</td><td style="text-align:left;padding:4px 6px"><div class="qt-input qt-name" contenteditable="true" onblur="updateQI(\''+qi.id+'\',\'name\',this.textContent)" style="font-size:14px">'+esc(qi.name)+'</div></td><td><input class="qt-input qt-qty" type="number" value="'+qi.quantity+'" step="0.01" onchange="updateQI(\''+qi.id+'\',\'quantity\',this.value)" style="text-align:center;font-size:14px"></td><td><input class="qt-input qt-unit" value="'+esc(qi.unit)+'" onchange="updateQI(\''+qi.id+'\',\'unit\',this.value)" style="text-align:center;font-size:14px"></td><td><div style="display:flex;align-items:center;justify-content:center"><span style="color:var(--text-dim);margin-right:0;font-size:14px">¥</span><input class="qt-input qt-price" type="number" value="'+qi.unitPrice+'" step="0.01" onchange="updateQI(\''+qi.id+'\',\'unitPrice\',this.value)" style="text-align:center;padding-left:2px;font-size:14px"></div></td><td class="col-amount" style="font-size:14px">¥'+fmt(a)+'</td><td class="col-desc" style="text-align:left;padding:4px 6px"><div class="qt-input qt-desc" contenteditable="true" onblur="updateQI(\''+qi.id+'\',\'description\',this.textContent)" style="font-size:14px">'+esc(qi.description||'')+'</div></td><td class="col-action no-print" style="text-align:center;vertical-align:middle"><button class="btn-x" onclick="deleteQI(\''+qi.id+'\')" style="font-size:14px">×</button></td></tr>'}
+function toggleQISelection(id){if(!S.qiSelectedIds) S.qiSelectedIds = [];var idx=S.qiSelectedIds.indexOf(id);if(idx>=0){S.qiSelectedIds.splice(idx,1);}else{S.qiSelectedIds.push(id);}renderQuoteTable();}
+function toggleQISelectAll(){var allItems=S.quoteItems.concat(S.productQuoteItems);var checkbox1=document.getElementById('qiSelectAll');var checkbox2=document.getElementById('qiSelectAll2');var checked=(checkbox1 && checkbox1.checked) || (checkbox2 && checkbox2.checked);if(!S.qiSelectedIds) S.qiSelectedIds = [];if(checked){S.qiSelectedIds=allItems.map(function(q){return q.id;});}else{S.qiSelectedIds=[];}renderQuoteTable();}
+function updateQISelectionUI(){var count=(S.qiSelectedIds || []).length;var countEl=document.getElementById('qiSelectedCount');var btnEl=document.getElementById('qiDeleteSelectedBtn');var checkbox1=document.getElementById('qiSelectAll');var checkbox2=document.getElementById('qiSelectAll2');var allItems=S.quoteItems.concat(S.productQuoteItems);var allChecked=allItems.length>0 && count===allItems.length;if(countEl) countEl.textContent=count;if(btnEl) btnEl.disabled=count===0;if(checkbox1) checkbox1.checked=allChecked;if(checkbox2) checkbox2.checked=allChecked;}
+function deleteSelectedQI(){var count=(S.qiSelectedIds || []).length;if(!count){showToast('请先选择要删除的报价项目');return;}if(!confirm('确定要删除已选的 '+count+' 个报价项目吗？')) return;pushUndoState();var deletedIds=S.qiSelectedIds || [];S.quoteItems=S.quoteItems.filter(function(q){return !deletedIds.includes(q.id);});S.productQuoteItems=S.productQuoteItems.filter(function(q){return !deletedIds.includes(q.id);});S.qiSelectedIds=[];debounceRenderQuoteTable();renderSummary();markDirty();showToast('已删除 '+count+' 个报价项目');}
 function updateQI(id,f,v){pushUndoState();var q=S.quoteItems.concat(S.productQuoteItems).find(function(x){return x.id===id});if(!q)return;if(f==='quantity'||f==='unitPrice')q[f]=parseFloat(v)||0;else q[f]=v;debounceRenderQuoteTable();markDirty()}
 function deleteQI(id){pushUndoState();S.quoteItems=S.quoteItems.filter(function(q){return q.id!==id});S.productQuoteItems=S.productQuoteItems.filter(function(q){return q.id!==id});debounceRenderQuoteTable();markDirty()}
 function addCustomQuoteItem(){pushUndoState();S.quoteItems.push({id:uid(),roomId:'__custom__',name:'自定义项目',quantity:1,unit:'项',unitPrice:0,description:'',category:'自定义'});debounceRenderQuoteTable();markDirty()}
@@ -1991,7 +2558,7 @@ document.addEventListener('keydown',function(e){
 });
 document.addEventListener('click',closeAllMenus);
 // Column resize
-(function(){var colMap={num:'.col-num',name:'.col-name',qty:'.col-qty',unit:'.col-unit',price:'.col-price',amount:'.col-amount',desc:'.col-desc',action:'.col-action'};var fixedCols={num:24,name:120,qty:24,unit:24,price:24,amount:100,desc:null,action:10};function applyColWidths(){var w=S.colWidths||{};Object.keys(fixedCols).forEach(function(k){if(fixedCols[k]!==null&&!w[k])w[k]=fixedCols[k]});var style=document.getElementById('dynColStyle');if(!style){style=document.createElement('style');style.id='dynColStyle';document.head.appendChild(style)}var rules=[];rules.push('.quote-table{table-layout:fixed;width:100%}');Object.keys(w).forEach(function(c){var s=colMap[c];if(s&&w[c])rules.push('.quote-table '+s+'{width:'+w[c]+'px;min-width:'+w[c]+'px;max-width:'+w[c]+'px}');});rules.push('.quote-table .col-desc{width:auto!important}');rules.push('.quote-table th,.quote-table td{vertical-align:middle;text-align:center}');rules.push('.quote-table td.col-name,.quote-table td.col-desc{text-align:left}');style.textContent=rules.join('\n');}window.applyColWidths=applyColWidths;applyColWidths();var resizing=null,startX=0,startW=0,startCol=null;document.addEventListener('mousedown',function(e){var th=e.target.closest('th.resizable');if(!th)return;var rect=th.getBoundingClientRect();if(rect.right-e.clientX>8)return;var col=th.dataset.col;if(!col)return;resizing=th;startX=e.clientX;startCol=col;startW=S.colWidths&&S.colWidths[col]?S.colWidths[col]:fixedCols[col]||100;e.preventDefault();e.stopPropagation();});document.addEventListener('mousemove',function(e){if(!resizing)return;var newW=Math.max(10,startW+(e.clientX-startX));if(!S.colWidths)S.colWidths={};S.colWidths[startCol]=newW;applyColWidths();markDirty();});document.addEventListener('mouseup',function(){resizing=null;startCol=null;});})();
+(function(){var colMap={num:'.col-num',name:'.col-name',qty:'.col-qty',unit:'.col-unit',price:'.col-price',amount:'.col-amount',desc:'.col-desc',action:'.col-action'};var fixedCols={num:24,name:120,qty:24,unit:24,price:90,amount:100,desc:null,action:10};function applyColWidths(){var w=S.colWidths||{};Object.keys(fixedCols).forEach(function(k){if(fixedCols[k]!==null&&!w[k])w[k]=fixedCols[k]});var style=document.getElementById('dynColStyle');if(!style){style=document.createElement('style');style.id='dynColStyle';document.head.appendChild(style)}var rules=[];rules.push('.quote-table{table-layout:fixed;width:100%}');Object.keys(w).forEach(function(c){var s=colMap[c];if(s&&w[c])rules.push('.quote-table '+s+'{width:'+w[c]+'px;min-width:'+w[c]+'px;max-width:'+w[c]+'px}');});rules.push('.quote-table .col-desc{width:auto!important}');rules.push('.quote-table th,.quote-table td{vertical-align:middle;text-align:center}');rules.push('.quote-table td.col-name,.quote-table td.col-desc{text-align:left}');style.textContent=rules.join('\n');}window.applyColWidths=applyColWidths;applyColWidths();var resizing=null,startX=0,startW=0,startCol=null;document.addEventListener('mousedown',function(e){var th=e.target.closest('th.resizable');if(!th)return;var rect=th.getBoundingClientRect();if(rect.right-e.clientX>8)return;var col=th.dataset.col;if(!col)return;resizing=th;startX=e.clientX;startCol=col;startW=S.colWidths&&S.colWidths[col]?S.colWidths[col]:fixedCols[col]||100;e.preventDefault();e.stopPropagation();});document.addEventListener('mousemove',function(e){if(!resizing)return;var newW=Math.max(10,startW+(e.clientX-startX));if(!S.colWidths)S.colWidths={};S.colWidths[startCol]=newW;applyColWidths();markDirty();});document.addEventListener('mouseup',function(){resizing=null;startCol=null;});})();
 ;function applyQuoteTableStyles(){applyColWidths();var fs=S.fontSizes||{table:12,header:12,project:14,description:11,input:11};var style=document.getElementById('dynFontStyle');if(!style){style=document.createElement('style');style.id='dynFontStyle';document.head.appendChild(style)}var rules=[];rules.push('.quote-table{font-size:'+fs.table+'px}');rules.push('.quote-table th{font-size:'+fs.header+'px}');rules.push('div.qt-name{font-size:'+fs.project+'px}');rules.push('div.qt-desc{font-size:'+fs.description+'px}');rules.push('.qt-input{font-size:'+fs.input+'px}');rules.push('div.qt-input{min-height:'+(S.rowHeight||36)+'px}');rules.push('.quote-table th,.quote-table td{vertical-align:middle}');rules.push('.quote-table td.col-name,.quote-table td.col-desc{vertical-align:middle}');style.textContent=rules.join('\n');document.querySelectorAll('.quote-table').forEach(function(t){t.style.fontSize=fs.table+'px'});document.querySelectorAll('.quote-table th').forEach(function(th){th.style.fontSize=fs.header+'px'});document.querySelectorAll('div.qt-name').forEach(function(el){el.style.fontSize=fs.project+'px'});document.querySelectorAll('div.qt-desc').forEach(function(el){el.style.fontSize=fs.description+'px'});document.querySelectorAll('.qt-input').forEach(function(el){el.style.fontSize=fs.input+'px'});document.querySelectorAll('div.qt-input').forEach(function(el){el.style.minHeight=(S.rowHeight||36)+'px'})}
 // Row resize
 (function(){var resizeRow=null,startY=0,startH=0;document.addEventListener('mousedown',function(e){var td=e.target.closest('td');if(!td)return;var tr=td.parentElement;if(!tr||!tr.closest('.quote-table'))return;var rect=td.getBoundingClientRect();if(rect.bottom-e.clientY<6){resizeRow=tr;startY=e.clientY;startH=tr.offsetHeight;e.preventDefault()}});document.addEventListener('mousemove',function(e){if(!resizeRow)return;resizeRow.style.height=Math.max(22,startH+(e.clientY-startY))+'px'});document.addEventListener('mouseup',function(){resizeRow=null})})();

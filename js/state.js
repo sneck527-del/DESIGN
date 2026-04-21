@@ -30,7 +30,7 @@ var S = {
   editingSpaceTypeId: null,
   watermarkEnabled: false,
   watermarkText: '报价专用',
-  colWidths: {num:24,name:100,qty:24,unit:24,price:24,amount:100,desc:180,action:24},
+  colWidths: {num:24,name:100,qty:24,unit:24,price:90,amount:100,desc:180,action:24},
   msProjectName: '',
   msCustomerInfo: {
     name: '',
@@ -142,5 +142,6 @@ function initDefaults() {
   if (!S.spaceTypes) S.spaceTypes = JSON.parse(JSON.stringify(DEFAULT_SPACE_TYPES));
   if (!S.fontSizes) S.fontSizes = {table: 12, header: 12, project: 14, description: 11, input: 11};
   if (!S.rowHeight) S.rowHeight = 36;
-  if (!S.colWidths) S.colWidths = {num:24,name:100,qty:24,unit:24,price:24,amount:100,desc:180,action:24};
+  if (!S.colWidths) S.colWidths = {num:24,name:100,qty:24,unit:24,price:90,amount:100,desc:180,action:24};
+  if (S.colWidths && S.colWidths.price < 90) S.colWidths.price = 90;
 }

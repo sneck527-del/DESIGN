@@ -28,6 +28,8 @@ function loadState() {
     loadTemplatesFromStorage();
     migrateOldData();
     migrateMaterialsToSeparate();
+    smartMigrateMaterials();
+    smartMigrateSpaceTypes();
     initDefaults();
   } catch (e) {
     console.error(e);
@@ -174,6 +176,147 @@ function migrateMaterialsToSeparate() {
       localStorage.setItem('dq_settings', JSON.stringify(d));
     }
   } catch (e) {}
+}
+
+function smartMigrateMaterials() {
+  try {
+    var storedVersion = localStorage.getItem('dq_materials_version');
+    if (storedVersion === MATERIAL_DATA_VERSION) {
+      return;
+    }
+
+    var storedMaterials = null;
+    try {
+      var m = localStorage.getItem('dq_materials');
+      if (m) {
+        storedMaterials = JSON.parse(m);
+      }
+    } catch (e) {
+      storedMaterials = null;
+    }
+
+    if (!storedMaterials || !Array.isArray(storedMaterials)) {
+      S.materials = JSON.parse(JSON.stringify(DEFAULT_MATERIALS));
+      localStorage.setItem('dq_materials', JSON.stringify(S.materials));
+      localStorage.setItem('dq_materials_version', MATERIAL_DATA_VERSION);
+      return;
+    }
+
+    var materialMap = {};
+    storedMaterials.forEach(function(mat) {
+      if (mat && mat.id) {
+        materialMap[mat.id] = mat;
+      }
+    });
+
+    var newMaterials = [];
+    var hasChanges = false;
+
+    DEFAULT_MATERIALS.forEach(function(defaultMat) {
+      if (materialMap[defaultMat.id]) {
+        var storedMat = materialMap[defaultMat.id];
+        var isModified = false;
+        
+        var fieldsToCheck = ['name', 'brand', 'unit', 'description', 'category', 'calcType', 'spaceTypeFilter'];
+        fieldsToCheck.forEach(function(field) {
+          if (JSON.stringify(storedMat[field]) !== JSON.stringify(defaultMat[field])) {
+            isModified = true;
+          }
+        });
+        
+        if (storedMat.prices) {
+          ['luxury', 'premium', 'standard'].forEach(function(plan) {
+            if (storedMat.prices[plan] !== defaultMat.prices[plan]) {
+              isModified = true;
+            }
+          });
+        }
+
+        if (isModified) {
+          newMaterials.push(storedMat);
+        } else {
+          newMaterials.push(JSON.parse(JSON.stringify(defaultMat)));
+          hasChanges = true;
+        }
+        delete materialMap[defaultMat.id];
+      } else {
+        newMaterials.push(JSON.parse(JSON.stringify(defaultMat)));
+        hasChanges = true;
+      }
+    });
+
+    Object.keys(materialMap).forEach(function(id) {
+      newMaterials.push(materialMap[id]);
+    });
+
+    S.materials = newMaterials;
+    
+    if (hasChanges || storedVersion !== MATERIAL_DATA_VERSION) {
+      localStorage.setItem('dq_materials', JSON.stringify(S.materials));
+      localStorage.setItem('dq_materials_version', MATERIAL_DATA_VERSION);
+    }
+  } catch (e) {
+    console.error('材料数据迁移失败:', e);
+    S.materials = JSON.parse(JSON.stringify(DEFAULT_MATERIALS));
+  }
+}
+
+function smartMigrateSpaceTypes() {
+  try {
+    var storedVersion = localStorage.getItem('dq_spacetypes_version');
+    var currentVersion = MATERIAL_DATA_VERSION;
+    
+    if (storedVersion === currentVersion) {
+      return;
+    }
+
+    if (!S.spaceTypes || !Array.isArray(S.spaceTypes)) {
+      S.spaceTypes = JSON.parse(JSON.stringify(DEFAULT_SPACE_TYPES));
+      localStorage.setItem('dq_spacetypes_version', currentVersion);
+      return;
+    }
+
+    var spaceTypeMap = {};
+    S.spaceTypes.forEach(function(st) {
+      if (st && st.id) {
+        spaceTypeMap[st.id] = st;
+      }
+    });
+
+    var newSpaceTypes = [];
+    var hasChanges = false;
+
+    DEFAULT_SPACE_TYPES.forEach(function(defaultST) {
+      if (spaceTypeMap[defaultST.id]) {
+        var storedST = spaceTypeMap[defaultST.id];
+        var isModified = (storedST.name !== defaultST.name) || (storedST.icon !== defaultST.icon);
+        
+        if (isModified) {
+          newSpaceTypes.push(storedST);
+        } else {
+          newSpaceTypes.push(JSON.parse(JSON.stringify(defaultST)));
+          hasChanges = true;
+        }
+        delete spaceTypeMap[defaultST.id];
+      } else {
+        newSpaceTypes.push(JSON.parse(JSON.stringify(defaultST)));
+        hasChanges = true;
+      }
+    });
+
+    Object.keys(spaceTypeMap).forEach(function(id) {
+      newSpaceTypes.push(spaceTypeMap[id]);
+    });
+
+    S.spaceTypes = newSpaceTypes;
+    
+    if (hasChanges || storedVersion !== currentVersion) {
+      localStorage.setItem('dq_spacetypes_version', currentVersion);
+    }
+  } catch (e) {
+    console.error('空间类型数据迁移失败:', e);
+    S.spaceTypes = JSON.parse(JSON.stringify(DEFAULT_SPACE_TYPES));
+  }
 }
 
 function compressImage(file, maxW, quality, cb) {

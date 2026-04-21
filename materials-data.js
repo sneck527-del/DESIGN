@@ -1,4 +1,4 @@
-var MATERIAL_DATA_VERSION='3.0';
+var MATERIAL_DATA_VERSION='3.1';
 
 var CATEGORIES=[
 '拆除工程','砌筑工程','水电工程','防水工程','泥瓦工程',
@@ -22,7 +22,8 @@ var DEFAULT_SPACE_TYPES=[
 {id:'st_hallway',name:'走廊',icon:'📐'},{id:'st_study',name:'书房',icon:'📚'},
 {id:'st_storage',name:'储物间',icon:'📦'},{id:'st_basement',name:'地下室',icon:'🏠'},
 {id:'st_staircase',name:'楼梯间',icon:'🏗️'},{id:'st_courtyard',name:'庭院',icon:'🌳'},
-{id:'st_laundry',name:'洗衣房',icon:'🧺'},{id:'st_cloakroom',name:'衣帽间',icon:'👗'}
+{id:'st_laundry',name:'洗衣房',icon:'🧺'},{id:'st_cloakroom',name:'衣帽间',icon:'👗'},
+{id:'st_garage',name:'车库',icon:'🚗'}
 ];
 
 var DEFAULT_EQUIPMENT=[
@@ -115,6 +116,7 @@ var DEFAULT_MATERIALS=[
 {id:'m73',name:'墙面石材铺贴',brand:'天然石材',unit:'㎡',prices:{luxury:320,premium:240,standard:160},description:'墙面石材安装 | 工序:六面防护→龙骨/基层→挂件安装→石材固定→填缝 | 工艺:镀锌方钢龙骨+不锈钢挂件+AB胶固定，拼花对纹 | 隐蔽:龙骨焊接验收，挂件牢固性验收 | 验收:平整度≤1mm/2m，拼花对纹一致，空鼓率0% | 人工:持证石材工',category:'墙面工程',calcType:'wall_area',spaceTypeFilter:[],processDetail:{luxury:'工序:石材六面防护(两遍)→镀锌方钢龙骨焊接→不锈钢挂件安装→AB胶固定→拼花对纹→调整平整度→密封胶填缝 | 材质:天然石材厚度≥18mm，不锈钢挂件，符合GB/T19766/JG/T217 | 隐蔽:龙骨焊接验收，挂件牢固性验收 | 验收:平整度≤1mm/2m，拼花对纹一致，空鼓率0% | 人工:持证石材工',premium:'工序:防护处理→湿贴法→AB胶粘贴→填缝 | 验收:平整度≤2mm/2m',standard:'工序:水泥砂浆铺贴→填缝 | 验收:平整度≤3mm/2m'}},
 
 {id:'m80',name:'铝扣板吊顶',brand:'奥普/友邦',unit:'㎡',prices:{luxury:150,premium:110,standard:75},description:'集成铝扣板吊顶 | 工序:弹线→龙骨安装→铝扣板安装→电器模块 | 工艺:0.7mm铝扣板+轻钢龙骨，副龙骨@300 | 隐蔽:龙骨间距验收 | 验收:板面平整无翘曲，拼缝严密，电器功能正常 | 人工:持证装饰工',category:'顶面工程',calcType:'ceiling_area',spaceTypeFilter:['st_bathroom','st_kitchen'],processDetail:{luxury:'工序:弹线定位→主龙骨C60@900→副龙骨@300→奥普/友邦0.7mm铝扣板安装→换气扇/浴霸开孔→电器模块安装→收边条收口 | 材质:奥普/友邦0.7mm铝扣板+轻钢龙骨，符合GB/T3850 | 隐蔽:龙骨间距验收 | 验收:板面平整无翘曲，拼缝严密，电器功能正常 | 人工:持证装饰工',premium:'工序:品牌0.6mm铝扣板+龙骨安装→电器模块 | 验收:板面平整',standard:'工序:0.5mm铝扣板安装 | 验收:安装完成'}},
+{id:'m81',name:'其他吊顶',brand:'-',unit:'㎡',prices:{luxury:100,premium:75,standard:50},description:'其他类型吊顶 | 工序:根据具体吊顶类型施工 | 工艺:按设计要求 | 验收:符合设计要求',category:'顶面工程',calcType:'ceiling_area',spaceTypeFilter:[],processDetail:{luxury:'工序:根据具体吊顶类型按设计要求施工 | 验收:符合设计要求',premium:'工序:按设计要求施工 | 验收:符合设计要求',standard:'工序:按设计要求施工 | 验收:安装完成'}},
 
 {id:'m90',name:'室内门',brand:'凯恩佳美',unit:'樘',prices:{luxury:3800,premium:2600,standard:1600},description:'实木复合门含门套五金 | 工序:门套安装→门扇安装→五金调试 | 工艺:45mm厚门扇+静音磁吸锁+304不锈钢合页 | 环保:甲醛释放量≤0.025mg/m³(ENF级) | 验收:开关顺畅无异响，密封严密，门缝均匀(2-3mm) | 人工:持证木工',category:'门窗工程',calcType:'door_count',spaceTypeFilter:[],processDetail:{luxury:'工序:门套定位→膨胀螺栓固定→凯恩佳美实木复合门45mm厚门扇→静音磁吸锁→304不锈钢合页→门吸安装→密封条→开关调试 | 材质:凯恩佳美实木复合门，含水率8%-12%，符合GB/T29498 | 环保:甲醛释放量≤0.025mg/m³(ENF级) | 验收:开关顺畅无异响，密封严密，门缝均匀(2-3mm) | 人工:持证木工',premium:'工序:门套安装→40mm厚门扇→品牌五金→调试 | 验收:开关顺畅',standard:'工序:门套安装→38mm厚门扇→调试 | 验收:开关正常'}},
 {id:'m91',name:'门套',brand:'凯恩佳美',unit:'m',prices:{luxury:120,premium:85,standard:55},description:'实木门套线 | 工序:定位→固定→收口→打胶 | 工艺:60mm宽实木套线，双面门套，膨胀螺栓固定@400mm | 环保:E0级，符合GB/T21140 | 验收:与墙面贴合紧密无离缝，垂直度≤2mm，对角线差≤2mm | 人工:持证木工',category:'门窗工程',calcType:'door_perimeter',spaceTypeFilter:[],processDetail:{luxury:'工序:门套定位→凯恩佳美实木门套60mm宽套线→双面门套→膨胀螺栓固定@400mm→发泡剂填充→收口条→硅胶封边→垂直度校验 | 材质:凯恩佳美实木门套，含水率8%-12%，符合GB/T21140 | 环保:E0级 | 验收:与墙面贴合紧密无离缝，垂直度≤2mm，对角线差≤2mm | 人工:持证木工',premium:'工序:实木门套50mm宽套线→固定→打胶 | 验收:安装牢固',standard:'工序:复合门套线→固定 | 验收:安装完成'}},
