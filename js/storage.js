@@ -329,7 +329,8 @@ function compressImage(file, maxW, quality, cb) {
       c.width = Math.round(img.width * ratio);
       c.height = Math.round(img.height * ratio);
       c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-      cb(c.toDataURL('image/jpeg', quality));
+      var isPng = file.type === 'image/png' || file.name.toLowerCase().endsWith('.png');
+      cb(isPng ? c.toDataURL('image/png') : c.toDataURL('image/jpeg', quality));
     };
     img.src = e.target.result;
   };

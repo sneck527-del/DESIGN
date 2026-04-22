@@ -16,3 +16,6 @@ node_modules/
 *.tmp
 *.log
 *.cache
+
+# Claude Code 配置
+.claude/

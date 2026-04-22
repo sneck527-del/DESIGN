@@ -23,6 +23,11 @@ function fmtK(n) {
   return n >= 10000 ? Math.round(n / 10000) + '万' : fmt(n);
 }
 
+function fmtInt(n) {
+  var num = Math.round(Number(n) || 0);
+  return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
 function esc(s) {
   return String(s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }

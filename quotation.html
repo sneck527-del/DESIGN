@@ -6,6 +6,7 @@
 <title>斑马丨精装报价系统</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
 :root{--font-family:"Microsoft YaHei","PingFang SC",-apple-system,sans-serif;--primary:#f5f1e6;--primary-light:#e8e0d0;--accent:#d4af37;--accent-light:#e6c158;--accent-dim:rgba(212,175,55,0.12);--success:#10b981;--warning:#f59e0b;--danger:#ef4444;--bg:#0a0a0a;--bg-secondary:#1a1a1a;--card:#1a1a1a;--card-hover:#2a2a2a;--text:#f5f1e6;--text-light:#b8b4a9;--text-dim:#8a877e;--border:rgba(212,175,55,0.1);--border-strong:rgba(212,175,55,0.2);--input-bg:#0a0a0a;--hover-bg:rgba(212,175,55,0.06);--cat-bg:rgba(212,175,55,0.04);--sub-bg:rgba(26,26,26,0.6);--shadow:0 4px 24px rgba(0,0,0,0.5);--radius:12px;--radius-sm:8px;--header-bg:#0a0a0a;--th-bg:rgba(212,175,55,0.1);--th-color:#b8b4a9;--total-bg:linear-gradient(135deg,#8b6b1a,#d4af37);--total-color:#fff;--sidebar-bg:#050505;--sidebar-text:#b8b4a9;--sidebar-hover:#1a1a1a;--sidebar-active:#d4af37;--sidebar-width:200px;--glow:0 0 20px rgba(212,175,55,0.15)}
 [data-theme="light"]{--bg:#f8fafc;--bg-secondary:#ffffff;--card:#ffffff;--card-hover:#f1f5f9;--text:#1e293b;--text-light:#64748b;--text-dim:#94a3b8;--border:#e2e8f0;--border-strong:#cbd5e1;--input-bg:#f8fafc;--hover-bg:rgba(59,130,246,0.08);--cat-bg:#eff6ff;--sub-bg:#f8fafc;--shadow:0 4px 24px rgba(0,0,0,0.08);--header-bg:#ffffff;--th-bg:#eff6ff;--th-color:#3b82f6;--total-bg:linear-gradient(135deg,#1e40af,#3b82f6);--sidebar-bg:#ffffff;--sidebar-text:#64748b;--sidebar-hover:#eff6ff;--sidebar-active:#3b82f6;--glow:none;--accent-dim:rgba(59,130,246,0.08);--accent:#3b82f6;--accent-light:#60a5fa}
@@ -98,12 +99,12 @@ body{font-family:var(--font-family);background:var(--bg);color:var(--text);line-
 .dash-stat-label{font-size:12px;color:var(--text-light);font-weight:500}
 .dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .dash-card{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden}
-.dash-card-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
-.dash-card-header h3{font-size:14px;font-weight:600;color:var(--text)}
-.dash-card-body{padding:16px 18px}
-.dash-table{width:100%;border-collapse:collapse;font-size:12px}
-.dash-table th{background:var(--bg-secondary);padding:8px 10px;text-align:center;font-weight:600;color:var(--text-light);border-bottom:1px solid var(--border);font-size:12px;text-transform:uppercase;letter-spacing:.5px;vertical-align:middle}
-.dash-table td{padding:8px 10px;border-bottom:1px solid var(--border);color:var(--text)}
+.dash-card-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.dash-card-header h3{font-size:16px;font-weight:600;color:var(--text)}
+.dash-card-body{padding:18px 20px}
+.dash-table{width:100%;border-collapse:collapse;font-size:14px}
+.dash-table th{background:var(--bg-secondary);padding:12px 14px;text-align:center;font-weight:600;color:var(--text-light);border-bottom:1px solid var(--border);font-size:13px;text-transform:uppercase;letter-spacing:.5px;vertical-align:middle}
+.dash-table td{padding:12px 14px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle}
 .dash-table tr:hover td{background:var(--hover-bg)}
 .dash-bar{height:6px;border-radius:3px;background:var(--bg-secondary);overflow:hidden;margin-top:4px}
 .dash-bar-fill{height:100%;border-radius:3px;transition:width .6s}
@@ -113,19 +114,19 @@ body{font-family:var(--font-family);background:var(--bg);color:var(--text);line-
 .dash-nav-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
 
 /* Boss Dashboard */
-.boss-stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px}
-.boss-stat{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center}
-.boss-stat .value{font-size:28px;font-weight:700;margin:4px 0}
+.boss-stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px}
+.boss-stat{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px 16px;text-align:center}
+.boss-stat .value{font-size:32px;font-weight:700;margin:8px 0}
 .boss-stat .value.profit{color:var(--success)}
 .boss-stat .value.margin{color:var(--accent)}
 .boss-stat .value.cost{color:var(--warning)}
-.boss-stat .label{font-size:12px;color:var(--text-light)}
-.boss-config{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px}
-.boss-config h4{font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px}
-.boss-config-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
-.boss-config-item{display:flex;flex-direction:column;gap:3px}
-.boss-config-item label{font-size:11px;color:var(--text-light)}
-.boss-config-item input{padding:5px 8px;border:1px solid var(--border-strong);border-radius:6px;background:var(--input-bg);color:var(--text);font-size:12px;outline:none;text-align:center}
+.boss-stat .label{font-size:14px;color:var(--text-light)}
+.boss-config{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px}
+.boss-config h4{font-size:16px;font-weight:600;color:var(--text);margin-bottom:14px}
+.boss-config-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.boss-config-item{display:flex;flex-direction:column;gap:6px}
+.boss-config-item label{font-size:13px;color:var(--text-light);font-weight:500}
+.boss-config-item input{padding:10px 12px;border:1px solid var(--border-strong);border-radius:8px;background:var(--input-bg);color:var(--text);font-size:14px;outline:none;min-height:42px}
 
 /* Measurement & Quotation Views */
 .measurement-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px}
@@ -173,8 +174,14 @@ body{font-family:var(--font-family);background:var(--bg);color:var(--text);line-
 .room-tag{font-size:10px;padding:1px 6px;border-radius:4px;background:var(--accent);color:#fff}.floor-header{font-size:14px;font-weight:700;color:var(--text);padding:10px 12px;background:var(--accent-dim);border-radius:8px;margin-bottom:8px;cursor:pointer;transition:all .15s}.floor-header:hover{background:var(--accent);color:#fff}
 .sub-section{margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
 .sub-section h4{font-size:12px;font-weight:600;margin-bottom:6px;color:var(--text)}
-.btn-x{width:20px;height:20px;border:none;background:var(--danger);color:#fff;border-radius:50%;cursor:pointer;font-size:12px;line-height:1;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.btn-x:hover{opacity:.8}
+.btn-x{width:28px;height:28px;border:none;background:var(--danger);color:#fff;border-radius:8px;cursor:pointer;font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s}
+.btn-x:hover{opacity:.85;transform:scale(1.1);box-shadow:0 2px 8px rgba(239,68,68,0.3)}
+.btn-x:active{transform:scale(0.95)}
+/* Custom Checkbox */
+.qt-checkbox{width:20px;height:20px;cursor:pointer;accent-color:var(--accent);transition:all .2s}
+.qt-checkbox:hover{transform:scale(1.1)}
+.qt-checkbox:checked{animation:checkPop .2s ease-out}
+@keyframes checkPop{0%{transform:scale(1)}50%{transform:scale(1.2)}100%{transform:scale(1)}}
 .quote-table-wrapper{overflow-x:auto}
 .quote-table{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed}
 .quote-table th{background:var(--th-bg);color:var(--th-color);padding:7px 8px;text-align:center;font-weight:600;position:sticky;top:0;font-size:12px;letter-spacing:.5px;vertical-align:middle;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -434,7 +441,7 @@ input[type=number]{-moz-appearance:textfield}
 </div>
 </aside>
 <div class="app-main" id="appMain">
-<div class="view active" id="welcomeView"><div class="welcome-view"><div class="welcome-content"><div class="wc-icon"><img src="" id="welcomeLogo" style="width:64px;height:64px;object-fit:contain"></div><h2 style="font-family:'Microsoft YaHei UI Light','Microsoft YaHei Light',sans-serif;font-weight:300">斑马丨精装报价系统</h2><p>新建文件或打开最近文档</p><div class="welcome-actions"><div class="welcome-card" onclick="createNewFile('quotation')"><div class="wc-emoji">📋</div><h3>新建报价</h3><p>创建报价文件</p></div><div class="welcome-card" onclick="createFromTemplatePrompt()"><div class="wc-emoji">📑</div><h3>从模板创建</h3><p>使用模板快速创建</p></div><div class="welcome-card" onclick="createNewFile('measurement')"><div class="wc-emoji">📐</div><h3>新建量房</h3><p>记录房间尺寸</p></div><div class="welcome-card" onclick="document.getElementById('importHTMLInput').click()"><div class="wc-emoji">📄</div><h3>导入HTML</h3><p>导入HTML文件</p></div><div class="welcome-card" onclick="openProductDatabase()"><div class="wc-emoji">🗃️</div><h3>产品数据库</h3><p>管理产品信息</p></div><div class="welcome-card" onclick="showDashboard()"><div class="wc-emoji">📊</div><h3>数据看板</h3><p>查看数据统计</p></div></div></div></div><input type="file" id="importHTMLInput" accept=".html" style="display:none" onchange="importFromHTML(this)"></div>
+<div class="view active" id="welcomeView"><div class="welcome-view"><div class="welcome-content"><div class="wc-icon"><img src="" id="welcomeLogo" style="width:64px;height:64px;object-fit:contain"></div><h2 style="font-family:'Microsoft YaHei UI Light','Microsoft YaHei Light',sans-serif;font-weight:300">斑马丨精装报价系统</h2><p>新建文件或打开最近文档</p><div class="welcome-actions"><div class="welcome-card" onclick="createNewFile('quotation')"><div class="wc-emoji">📋</div><h3>新建报价</h3><p>创建报价文件</p></div><div class="welcome-card" onclick="createFromTemplatePrompt()"><div class="wc-emoji">📑</div><h3>从模板创建</h3><p>使用模板快速创建</p></div><div class="welcome-card" onclick="createNewFile('measurement')"><div class="wc-emoji">📐</div><h3>新建量房</h3><p>记录房间尺寸</p></div><div class="welcome-card" onclick="document.getElementById('importHTMLInput').click()"><div class="wc-emoji">📄</div><h3>导入HTML</h3><p>导入HTML文件</p></div><div class="welcome-card" onclick="openProductDatabase()" style="display:none"><div class="wc-emoji">🗃️</div><h3>产品数据库</h3><p>管理产品信息</p></div><div class="welcome-card" onclick="showDashboard()" style="display:none"><div class="wc-emoji">📊</div><h3>数据看板</h3><p>查看数据统计</p></div></div></div></div><input type="file" id="importHTMLInput" accept=".html" style="display:none" onchange="importFromHTML(this)"></div>
 <input type="file" id="sidebarImportHTMLInput" accept=".html" style="display:none" onchange="importFromHTML(this)">
 <div class="view" id="measurementView"><div class="measurement-header"><h2><span>📐</span><input class="project-name-input" id="msProjectName" placeholder="输入项目名称" oninput="onMsProjectNameChange()"></h2><div class="measurement-header-actions"><button class="btn btn-primary" onclick="submitMeasurementToQuotation()">提交并保存</button></div></div><div class="card" style="margin-bottom:14px"><div class="card-header"><h2>客户信息</h2></div><div class="card-body"><div class="form-grid"><div class="form-group"><label>客户姓名</label><input id="msCustName" oninput="onMsCustChange()"></div><div class="form-group"><label>联系方式</label><input id="msCustPhone" oninput="onMsCustChange()"></div><div class="form-group"><label>设计师</label><input id="msCustDesigner" oninput="onMsCustChange()"></div><div class="form-group"><label>设计师联系方式</label><input id="msCustDesignerPhone" oninput="onMsCustChange()"></div><div class="form-group full"><label>装修地址</label><input id="msCustAddress" oninput="onMsCustChange()"></div><div class="form-group"><label>工艺标准</label><select id="msCustPlan" onchange="onMsCustChange()"><option value="luxury">奢享全案</option><option value="premium">优享精造</option></select></div><div class="form-group"><label>报价模式</label><select id="msCustQuoteMode" onchange="onMsCustChange()"><option value="full">全案落地</option><option value="light">轻工辅料</option></select></div><div class="form-group"><label>量房日期</label><input type="date" id="msCustDate" oninput="onMsCustChange()"></div><div class="form-group"><label>建筑面积(㎡)</label><input type="number" id="msCustArea" oninput="onMsCustChange()" step="0.01"></div></div></div></div><div class="card"><div class="card-header"><h2>房间尺寸记录</h2><div style="display:flex;gap:6px"><button class="btn btn-outline btn-sm" onclick="importRoomsFromFile()">📥 导入房间</button><button class="btn btn-outline btn-sm" onclick="importRoomsFromImage()">🖼️ 导入图片</button><button class="btn btn-primary btn-sm" onclick="openMsRoomEditor()">+ 添加房间</button></div></div><div class="card-body" id="msRoomList"></div></div></div>
 <div class="view" id="quotationView"><div class="measurement-header"><h2><span>📋</span>报价编辑</h2><div class="measurement-header-actions"><button class="btn btn-outline" onclick="showView('welcome')" style="font-size:14px" title="不保存返回首页">返回</button><button class="btn btn-outline" onclick="showSaveAsDialog()" style="font-size:14px" title="复制一份并保存">复制</button><button class="btn btn-primary" onclick="saveAsHTML()" style="font-size:14px" title="保存当前文件">💾 保存</button></div></div><div class="quotation-layout"><div class="left-panel"><div class="card"><div class="card-header"><h2>客户信息</h2></div><div class="card-body"><div class="form-grid"><div class="form-group"><label>客户姓名</label><input id="custName" oninput="onCustChange()"></div><div class="form-group"><label>联系方式</label><input id="custPhone" oninput="onCustChange()"></div><div class="form-group"><label>设计师</label><input id="custDesigner" oninput="onCustChange()"></div><div class="form-group"><label>设计师联系方式</label><input id="custDesignerPhone" oninput="onCustChange()"></div><div class="form-group full"><label>装修地址</label><input id="custAddress" oninput="onCustChange()"></div><div class="form-group"><label>工艺标准</label><select id="custPlan" onchange="onCustChange()"><option value="luxury">奢享全案</option><option value="premium">优享精造</option></select></div><div class="form-group"><label>报价模式</label><select id="custQuoteMode" onchange="onCustChange()"><option value="full">全案落地</option><option value="light">轻工辅料</option></select></div><div class="form-group"><label>报价日期</label><input type="date" id="custDate" oninput="onCustChange()"></div><div class="form-group"><label>建筑面积(㎡)</label><input type="number" id="custArea" oninput="onCustChange()" step="0.01"></div></div></div></div><div class="card"><div class="card-header"><h2>房间信息</h2><div style="display:flex;gap:6px"><button class="btn btn-outline btn-sm" onclick="exportRooms()">📤 导出房间</button><button class="btn btn-primary btn-sm" onclick="openRoomEditor()">+ 添加房间</button></div></div><div class="card-body" id="roomList"></div></div></div>
