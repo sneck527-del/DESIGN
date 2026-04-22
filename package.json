@@ -1,0 +1,24 @@
+{
+  "name": "banma-quotation-system",
+  "version": "1.0.0",
+  "description": "斑马精装报价系统 - 室内装修自动报价系统",
+  "main": "quotation.html",
+  "scripts": {
+    "start": "echo '请在浏览器中打开 quotation.html'",
+    "lint": "echo '待配置 ESLint'",
+    "test": "echo '待配置测试框架'"
+  },
+  "keywords": [
+    "quotation",
+    "interior-design",
+    "construction"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {},
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": ""
+  }
+}

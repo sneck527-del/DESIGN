@@ -10,51 +10,44 @@ function debounceRenderQuoteTable() {
   }, 16); // 约60fps
 }
 
-// 中国法定节假日列表（简化版）
-var CHINA_HOLIDAYS = [
-  // 2025年节假日（示例）
-  '2025-01-01', // 元旦
-  '2025-02-01', '2025-02-02', '2025-02-03', // 春节前
-  '2025-02-10', '2025-02-11', '2025-02-12', '2025-02-13', '2025-02-14', '2025-02-15', '2025-02-16', // 春节
-  '2025-04-04', '2025-04-05', '2025-04-06', // 清明节
-  '2025-05-01', '2025-05-02', '2025-05-03', '2025-05-04', '2025-05-05', // 劳动节
-  '2025-06-08', '2025-06-09', '2025-06-10', // 端午节
-  '2025-09-15', '2025-09-16', '2025-09-17', // 中秋节
-  '2025-10-01', '2025-10-02', '2025-10-03', '2025-10-04', '2025-10-05', '2025-10-06', '2025-10-07' // 国庆节
-];
+// ==================== 兼容性函数（使用工具模块）====================
+// 保持向后兼容的全局函数包装器
 
-// 检查日期是否为节假日
+/**
+ * 检查日期是否为节假日（兼容包装器）
+ * @param {string} dateStr - 日期字符串
+ * @returns {boolean} 是否为节假日
+ */
 function isHoliday(dateStr) {
-  var date = new Date(dateStr);
-  // 检查周末（周六=6，周日=0）
-  if (S.respectHolidays !== false) {
-    var day = date.getDay();
-    if (day === 0 || day === 6) return true;
-  }
-  // 检查法定节假日列表
-  if (CHINA_HOLIDAYS.includes(dateStr)) return true;
-  return false;
+  return DateUtils.isHoliday(dateStr, S.respectHolidays);
 }
 
-// 添加工作日天数，跳过节假日
+/**
+ * 添加工作日天数（兼容包装器）
+ * @param {string} startDateStr - 开始日期
+ * @param {number} days - 天数
+ * @returns {string} 结果日期
+ */
 function addBusinessDays(startDateStr, days) {
-  if (!S.respectHolidays) {
-    // 不遵守节假日，直接加天数
-    var date = new Date(startDateStr);
-    date.setDate(date.getDate() + days);
-    return date.toISOString().split('T')[0];
-  }
-  
-  var date = new Date(startDateStr);
-  var added = 0;
-  while (added < days) {
-    date.setDate(date.getDate() + 1);
-    var dateStr = date.toISOString().split('T')[0];
-    if (!isHoliday(dateStr)) {
-      added++;
-    }
-  }
-  return date.toISOString().split('T')[0];
+  return DateUtils.addBusinessDays(startDateStr, days, S.respectHolidays);
+}
+
+/**
+ * 标准化楼层名称（兼容包装器）
+ * @param {string} name - 楼层名称
+ * @returns {string} 标准化后的名称
+ */
+function normalizeFloorName(name) {
+  return NormalizeUtils.normalizeFloorName(name);
+}
+
+/**
+ * 标准化房间名称（兼容包装器）
+ * @param {string} name - 房间名称
+ * @returns {string} 标准化后的名称
+ */
+function normalizeRoomName(name) {
+  return NormalizeUtils.normalizeRoomName(name);
 }
 
 var S={
@@ -75,15 +68,15 @@ var S={
   undoStack:[],maxUndoSteps:50,
   floorOrder:[]
 };
-function markDirty(){S.dirty=true}
+function markDirty(){S.dirty=true;saveProductsToStorage();saveMaterialsToStorage();saveSettings()}
 
 function pushUndoState(){
   if(!S.currentFileId)return;
   var state={
-    customerInfo:JSON.parse(JSON.stringify(S.customerInfo)),
-    rooms:JSON.parse(JSON.stringify(S.rooms)),
-    quoteItems:JSON.parse(JSON.stringify(S.quoteItems)),
-    productQuoteItems:JSON.parse(JSON.stringify(S.productQuoteItems)),
+    customerInfo:StateUtils.deepClone(S.customerInfo),
+    rooms:StateUtils.deepClone(S.rooms),
+    quoteItems:StateUtils.deepClone(S.quoteItems),
+    productQuoteItems:StateUtils.deepClone(S.productQuoteItems),
     customNotes:S.customNotes,
     managementFeeRate:S.managementFeeRate,
     taxRate:S.taxRate,
@@ -112,31 +105,6 @@ function undo(){
   renderSummary();
   document.getElementById('customNotes').value=S.customNotes;
   showToast('已撤销');
-}
-function normalizeFloorName(name){
-  var floorMap={
-    '一层':'一楼','二层':'二楼','三层':'三楼','四层':'四楼','五层':'五楼',
-    '负一层':'负一楼','负二层':'负二楼','地下室':'负一楼','地下一层':'负一楼','地下二层':'负二楼',
-    '1层':'一楼','2层':'二楼','3层':'三楼','4层':'四楼','5层':'五楼',
-    '-1层':'负一楼','-2层':'负二楼'
-  };
-  var normalized=name.replace(/\s+/g,'');
-  return floorMap[normalized]||name;
-}
-function normalizeRoomName(name){
-  var roomMap={
-    '起居室':'客厅','会客室':'客厅','大厅':'客厅',
-    '主卧房':'主卧','主卧室':'主卧',
-    '次卧房':'次卧','次卧室':'次卧',
-    '儿童房':'儿童房','小孩房':'儿童房',
-    '书房':'书房','书室':'书房',
-    '厨房':'厨房','厨房间':'厨房',
-    '卫生间':'卫生间','洗手间':'卫生间','浴室':'卫生间',
-    '阳台':'阳台','露台':'阳台',
-    '餐厅':'餐厅','饭厅':'餐厅'
-  };
-  var normalized=name.replace(/\s+/g,'');
-  return roomMap[normalized]||name;
 }
 function initDefaults(){if(!S.fontSizes)S.fontSizes={table:14,header:14,project:16,description:15,input:13};if(!S.rowHeight)S.rowHeight=36;if(!S.colWidths)S.colWidths={};if(S.colWidths&&S.colWidths.price<90)S.colWidths.price=90}
 function compressImage(file,maxW,quality,cb){var reader=new FileReader();reader.onload=function(e){var img=new Image();img.onload=function(){var c=document.createElement('canvas');var ratio=Math.min(maxW/img.width,1);c.width=Math.round(img.width*ratio);c.height=Math.round(img.height*ratio);c.getContext('2d').drawImage(img,0,0,c.width,c.height);cb(c.toDataURL('image/jpeg',quality))};img.src=e.target.result};reader.readAsDataURL(file)}
@@ -1060,7 +1028,7 @@ function testAiConnection(){var provider=document.getElementById('aiProvider').v
 // ==================== PRODUCT DATABASE ====================
 function openProductDatabase(){S.pdbSelectedMainCat=null;S.pdbSelectedSubCat=null;S.editingProductId=null;renderProductDb();openModal('productDbModal')}
 function renderProductDb(){var body=document.getElementById('productDbBody');var tree='<div class="pdb-cat-tree"><div class="pdb-cat-item'+(S.pdbSelectedMainCat===null?' active':'')+'" onclick="pdbSelectCategory(null,null)">全部 ('+S.products.length+')</div>';PRODUCT_MAIN_CATEGORIES.forEach(function(mc){var count=S.products.filter(function(p){return p.mainCategory===mc.id}).length;tree+='<div class="pdb-cat-main">'+mc.icon+' '+mc.name+' ('+count+')</div><div class="pdb-sub-list">'+mc.subcategories.map(function(sc){var sc2=S.products.filter(function(p){return p.mainCategory===mc.id&&p.subCategory===sc.id}).length;return'<div class="pdb-sub-item'+(S.pdbSelectedMainCat===mc.id&&S.pdbSelectedSubCat===sc.id?' active':'')+'" onclick="pdbSelectCategory(\''+mc.id+'\',\''+sc.id+'\')">'+sc.name+' ('+sc2+')</div>'}).join('')+'</div>'});tree+='</div>';
-  var content='<div style="display:flex;flex-direction:column;gap:10px"><div class="pdb-toolbar"><input id="pdbSearch" placeholder="搜索产品..." oninput="renderProductGrid()" style="width:180px"><select id="pdbMainFilter" onchange="pdbMainFilterChange()"><option value="">全部分类</option>'+PRODUCT_MAIN_CATEGORIES.map(function(mc){return'<option value="'+mc.id+'"'+(S.pdbSelectedMainCat===mc.id?' selected':'')+'>'+mc.icon+' '+mc.name+'</option>'}).join('')+'</select><select id="pdbSubFilter" onchange="pdbSubFilterChange()"><option value="">全部子类</option>'+(S.pdbSelectedMainCat?PRODUCT_MAIN_CATEGORIES.find(function(c){return c.id===S.pdbSelectedMainCat}).subcategories.map(function(sc){return'<option value="'+sc.id+'"'+(S.pdbSelectedSubCat===sc.id?' selected':'')+'>'+sc.name+'</option>'}).join(''):'')+'</select><button class="btn btn-primary btn-sm" onclick="showProductForm()">+ 添加产品</button><div class="export-dropdown"><button class="btn btn-info btn-sm" onclick="toggleImportMenu(event)">📥 导入产品 ▾</button><div class="export-menu" id="importMenu"><button class="export-menu-item" onclick="importSummitTileProducts()">🧱 萨米特瓷砖</button><button class="export-menu-item" onclick="importLangjingSanitaryProducts()">🚿 浪鲸卫浴</button><button class="export-menu-item" onclick="importKaienjiaCustomProducts()">🛋️ 凯恩佳美定制</button><button class="export-menu-item" onclick="importQiteliWallFabricProducts()">🎨 七特丽壁布</button><button class="export-menu-item" onclick="importSchneiderBullSwitchProducts()">⚡ 开关插座</button><button class="export-menu-item" onclick="importSubmarineProducts()">🔩 潜水艇地漏</button><button class="export-menu-item" onclick="importCountertopProducts()">🪟 橱柜台面</button><button class="export-menu-item" onclick="importYeelightSmartProducts()">💡 易来智能</button><button class="export-menu-item" onclick="importEquipmentProducts()">⚙️ 设备产品</button><button class="export-menu-item" onclick="importSoftFurnishingProducts()">🛋️ 软装产品</button><button class="export-menu-item" onclick="importEcommerceProducts()">🛒 京东产品数据</button></div></div></div><div id="pdbGridArea"></div></div>';
+  var content='<div style="display:flex;flex-direction:column;gap:10px"><div class="pdb-toolbar"><input id="pdbSearch" placeholder="搜索产品..." oninput="renderProductGrid()" style="width:180px"><select id="pdbMainFilter" onchange="pdbMainFilterChange()"><option value="">全部分类</option>'+PRODUCT_MAIN_CATEGORIES.map(function(mc){return'<option value="'+mc.id+'"'+(S.pdbSelectedMainCat===mc.id?' selected':'')+'>'+mc.icon+' '+mc.name+'</option>'}).join('')+'</select><select id="pdbSubFilter" onchange="pdbSubFilterChange()"><option value="">全部子类</option>'+(S.pdbSelectedMainCat?PRODUCT_MAIN_CATEGORIES.find(function(c){return c.id===S.pdbSelectedMainCat}).subcategories.map(function(sc){return'<option value="'+sc.id+'"'+(S.pdbSelectedSubCat===sc.id?' selected':'')+'>'+sc.name+'</option>'}).join(''):'')+'</select><button class="btn btn-primary btn-sm" onclick="showProductForm()">+ 添加产品</button><button class="btn btn-info btn-sm" onclick="openAiProductSearch()" title="使用AI搜索京东产品">🤖 AI搜索</button></div><div id="pdbGridArea"></div></div>';
   body.innerHTML='<div class="pdb-layout">'+tree+content+'</div>';renderProductGrid()}
 function pdbSelectCategory(mc,sc){S.pdbSelectedMainCat=mc;S.pdbSelectedSubCat=sc;renderProductDb()}
 function pdbMainFilterChange(){S.pdbSelectedMainCat=document.getElementById('pdbMainFilter').value||null;S.pdbSelectedSubCat=null;renderProductDb()}
@@ -1731,7 +1699,25 @@ function addFwItem(){var c=document.getElementById('reFwItems');var d=document.c
 function toggleSection(t,c){var s=document.getElementById('re'+t+'Section');if(s)s.style.display=c?'block':'none';var l=document.getElementById('toggle'+t);if(l){if(c)l.classList.add('checked');else l.classList.remove('checked')}}
 function editRoom(id){openRoomEditor(id)}
 function saveRoom(){pushUndoState();var name=document.getElementById('reName').value.trim();var stId=document.getElementById('reSpaceType').value;var floor=document.getElementById('reFloor').value||'一楼';var area=parseFloat(document.getElementById('reArea').value)||0;var peri=parseFloat(document.getElementById('rePerimeter').value)||0;var h=parseFloat(document.getElementById('reHeight').value)||0;if(!area||!peri||!h){showToast('请输入面积、周长和高度');return}var doors=[],windows=[],eqs=[],cus=[],fws=[];document.querySelectorAll('#reDoors .door-win-row').forEach(function(row){var i=row.querySelectorAll('input');var w=parseFloat(i[0].value)||0,h=parseFloat(i[1].value)||0;if(w&&h)doors.push({width:w,height:h})});document.querySelectorAll('#reWindows .door-win-row').forEach(function(row){var i=row.querySelectorAll('input');var w=parseFloat(i[0].value)||0,h=parseFloat(i[1].value)||0;if(w&&h)windows.push({width:w,height:h})});document.querySelectorAll('#reEquipItems .equip-row').forEach(function(row){var i=row.querySelectorAll('input');if(i[0].value.trim()&&parseFloat(i[2].value))eqs.push({name:i[0].value.trim(),brand:i[1].value.trim(),unitPrice:parseFloat(i[2].value)||0,quantity:parseFloat(i[3].value)||1,unit:i[4].value.trim()||'项'})});document.querySelectorAll('#reCustomItems .custom-row').forEach(function(row){var type=(row.querySelector('.cr-type')||{}).value||'';var n=(row.querySelector('.cr-name')||{}).value.trim();var price=parseFloat((row.querySelector('.cr-price')||{}).value)||0;if(!n)return;var obj={name:n,type:type,unitPrice:price};var qtyEl=row.querySelector('.cr-qty');if(qtyEl){obj.quantity=parseFloat(qtyEl.value)||1;obj.unit=(row.querySelector('.cr-unit2')||{}).value||'项';cus.push(obj)}else{obj.length=parseFloat((row.querySelector('.cr-length')||{}).value)||0;var hEl=row.querySelector('.cr-height');if(hEl)obj.height=parseFloat(hEl.value)||0;if(obj.length||obj.height)cus.push(obj)}});document.querySelectorAll('#reFwItems .fw-row').forEach(function(row){var i=row.querySelectorAll('input');if(i[0].value.trim()&&parseFloat(i[1].value)&&parseFloat(i[2].value))fws.push({name:i[0].value.trim(),area:parseFloat(i[1].value)||0,unitPrice:parseFloat(i[2].value)||0})});var floorMat={type:document.getElementById('reFloorType').value,spec:document.getElementById('reFloorSpec').value,craft:document.getElementById('reFloorCraft').value};var wallMat={type:document.getElementById('reWallType').value,spec:document.getElementById('reWallSpec').value};var ceilingMat={type:document.getElementById('reCeilingType').value,spec:document.getElementById('reCeilingSpec').value};var rd={id:S.editingRoomId||uid(),name:name||'房间',spaceTypeId:stId,floor:floor,area:area,perimeter:peri,height:h,doors:doors,windows:windows,hasEquipment:!!document.getElementById('reHasEquip').checked,hasCustom:!!document.getElementById('reHasCustom').checked,hasFeatureWall:!!document.getElementById('reHasFeatureWall').checked,equipmentItems:eqs,customItems:cus,featureWallItems:fws,floorMaterial:floorMat,wallMaterial:wallMat,ceilingMaterial:ceilingMat};if(S.editingRoomId){var idx=S.rooms.findIndex(function(x){return x.id===S.editingRoomId});if(idx>=0){S.rooms[idx]=rd;S.quoteItems=S.quoteItems.filter(function(q){return q.roomId!==rd.id});S.quoteItems=S.quoteItems.concat(generateRoomItems(rd))}}else{S.rooms.push(rd);S.quoteItems=S.quoteItems.concat(generateRoomItems(rd))}regenerateUtilityItems();closeModal('roomEditorModal');renderRoomList();renderQuoteTable();renderSummary();showToast('已保存');markDirty()}
-function deleteRoom(id){pushUndoState();if(!confirm('确定删除？'))return;S.rooms=S.rooms.filter(function(r){return r.id!==id});S.quoteItems=S.quoteItems.filter(function(q){return q.roomId!==id});renderRoomList();renderQuoteTable();renderSummary();markDirty()}
+function deleteRoom(id){
+  pushUndoState();
+  var room = S.rooms.find(function(r){return r.id===id});
+  var roomName = room ? room.name : '房间';
+  var quoteItemCount = S.quoteItems.filter(function(q){return q.roomId===id}).length;
+
+  var message = '确定删除房间 "' + roomName + '" 吗？';
+  if (quoteItemCount > 0) {
+    message += '\n\n⚠️ 同时将删除 ' + quoteItemCount + ' 个关联报价项！';
+  }
+
+  if(!confirm(message))return;
+  S.rooms=S.rooms.filter(function(r){return r.id!==id});
+  S.quoteItems=S.quoteItems.filter(function(q){return q.roomId!==id});
+  renderRoomList();
+  renderQuoteTable();
+  renderSummary();
+  markDirty()
+}
 function exportRooms(){if(!S.rooms.length){showToast('没有房间可导出');return}var data={version:1,type:'room_export',exportDate:new Date().toISOString(),customerInfo:S.customerInfo,rooms:S.rooms.map(function(r){return{name:r.name,spaceTypeId:r.spaceTypeId,floor:r.floor||'一楼',area:r.area,perimeter:r.perimeter,height:r.height,doors:r.doors||[],windows:r.windows||[],hasEquipment:r.hasEquipment||false,hasCustom:r.hasCustom||false,hasFeatureWall:r.hasFeatureWall||false,equipmentItems:r.equipmentItems||[],customItems:r.customItems||[],featureWallItems:r.featureWallItems||[],floorMaterial:r.floorMaterial||{},wallMaterial:r.wallMaterial||{},ceilingMaterial:r.ceilingMaterial||{}}})};var blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download='房间信息_'+(S.customerInfo.address||S.customerInfo.name||'导出')+'_'+new Date().toISOString().split('T')[0]+'.json';document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);showToast('房间信息已导出')}
 function importRoomsFromFile(){var input=document.createElement('input');input.type='file';input.accept='.json';input.onchange=function(e){var file=e.target.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(ev){try{var data=JSON.parse(ev.target.result);if(data.type!=='room_export'){showToast('无效的房间导出文件');return}var rooms=data.rooms||[];if(!rooms.length){showToast('文件中没有房间数据');return}var n=0;rooms.forEach(function(r){S.msRooms.push({id:uid(),name:r.name,spaceTypeId:r.spaceTypeId,floor:r.floor||'一楼',area:r.area,perimeter:r.perimeter,height:r.height,doors:r.doors||[],windows:r.windows||[],customItems:r.customItems||[]});n++});if(data.customerInfo){var ci=data.customerInfo;if(ci.name)document.getElementById('msCustName').value=ci.name;if(ci.phone)document.getElementById('msCustPhone').value=ci.phone;if(ci.address)document.getElementById('msCustAddress').value=ci.address;if(ci.designer)document.getElementById('msCustDesigner').value=ci.designer;if(ci.designerPhone)document.getElementById('msCustDesignerPhone').value=ci.designerPhone;if(ci.plan)document.getElementById('msCustPlan').value=ci.plan;if(ci.quoteMode)document.getElementById('msCustQuoteMode').value=ci.quoteMode;if(ci.date)document.getElementById('msCustDate').value=ci.date;if(ci.area)document.getElementById('msCustArea').value=ci.area;onMsCustChange()}renderMsRoomList();markDirty();showToast('已导入'+n+'个房间')}catch(err){showToast('导入失败: 文件格式错误')}};reader.readAsText(file)};input.click()}
 
@@ -2315,42 +2301,166 @@ function syncPricesFromMaterials(){S.quoteItems.forEach(function(qi){if(qi.mater
 function syncPricesFromProducts(){S.productQuoteItems.forEach(function(qi){if(qi.productId){var p=S.products.find(function(x){return x.id===qi.productId});if(p){qi.unitPrice=p.unitPrice;qi.name=p.name;qi.brand=p.brand;qi.model=p.model;qi.specifications=p.specifications;qi.material=p.material;qi.color=p.color;qi.description=p.description||'';qi.notes=p.notes||''}}})}
 
 // ==================== QUOTE TABLE ====================
+
+// 搜索过滤相关变量
+var _quoteSearchText = '';
+
+/**
+ * 过滤报价项
+ * @param {string} searchText - 搜索文本
+ */
+function filterQuoteItems(searchText) {
+  _quoteSearchText = searchText.toLowerCase().trim();
+  renderQuoteTable();
+}
+
+/**
+ * 检查报价项是否匹配搜索
+ * @param {Object} item - 报价项
+ * @returns {boolean} 是否匹配
+ */
+function quoteItemMatchesSearch(item) {
+  if (!_quoteSearchText) return true;
+
+  var searchText = _quoteSearchText;
+  return (item.name && item.name.toLowerCase().includes(searchText)) ||
+         (item.description && item.description.toLowerCase().includes(searchText)) ||
+         (item.category && item.category.toLowerCase().includes(searchText)) ||
+         (item.brand && item.brand.toLowerCase().includes(searchText)) ||
+         (item.model && item.model.toLowerCase().includes(searchText)) ||
+         (item.roomName && item.roomName.toLowerCase().includes(searchText)) ||
+         (item.unit && item.unit.toLowerCase().includes(searchText)) ||
+         (item.mainCategory && item.mainCategory.toLowerCase().includes(searchText)) ||
+         (item.subCategory && item.subCategory.toLowerCase().includes(searchText)) ||
+         (item.specifications && item.specifications.toLowerCase().includes(searchText));
+}
+
 function renderQuoteTable(){var w=document.getElementById('quoteTableWrapper');var qm=S.customerInfo.quoteMode||'full';var addBtn=document.getElementById('addProductBtn');if(addBtn)addBtn.style.display=qm==='full'?'':'none';if(!S.rooms.length&&!S.quoteItems.length&&!S.productQuoteItems.length){w.innerHTML='<div class="empty-state"><div class="icon">📋</div><p>添加房间后自动生成</p></div>';return}
 if(!S.qiSelectedIds) S.qiSelectedIds = [];
-var h='<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border);margin-bottom:8px"><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="qiSelectAll" onchange="toggleQISelectAll()" style="cursor:pointer"> <span>全选</span></label><button class="btn btn-danger btn-sm" onclick="deleteSelectedQI()" id="qiDeleteSelectedBtn" disabled style="font-size:11px;padding:3px 8px">🗑️ 删除已选 (<span id="qiSelectedCount">0</span>)</button></div><table class="quote-table"><thead><tr><th class="col-select no-print" style="width:40px;text-align:center"><input type="checkbox" id="qiSelectAll2" onchange="toggleQISelectAll()" style="cursor:pointer"></th><th class="col-num resizable" data-col="num">序号</th><th class="col-name resizable" data-col="name">项目</th><th class="col-qty resizable" data-col="qty">数量</th><th class="col-unit resizable" data-col="unit">单位</th><th class="col-price resizable" data-col="price" style="width:100px">单价</th><th class="col-amount resizable" data-col="amount">金额</th><th class="col-desc resizable" data-col="desc">说明</th><th class="col-action no-print">操作</th></tr></thead><tbody>';
+
+// 搜索过滤：为每个报价项添加房间名称信息用于搜索
+S.quoteItems.forEach(function(qi) {
+  if (qi.roomId && qi.roomId !== '__utility__' && qi.roomId !== '__custom__') {
+    var room = S.rooms.find(function(r) { return r.id === qi.roomId; });
+    if (room) qi.roomName = room.name;
+  }
+});
+
+// 构建搜索过滤后的sections
+var h='<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border);margin-bottom:8px"><button class="btn btn-danger btn-sm" onclick="deleteSelectedQI()" id="qiDeleteSelectedBtn" disabled style="font-size:11px;padding:3px 8px">🗑️ 删除已选 (<span id="qiSelectedCount">0</span>)</button></div><table class="quote-table"><thead><tr><th class="col-action no-print">操作</th><th class="col-select no-print" style="width:40px;text-align:center"></th><th class="col-num resizable" data-col="num">序号</th><th class="col-name resizable" data-col="name">项目</th><th class="col-qty resizable" data-col="qty">数量</th><th class="col-unit resizable" data-col="unit">单位</th><th class="col-price resizable" data-col="price" style="width:100px">单价</th><th class="col-amount resizable" data-col="amount">金额</th><th class="col-desc resizable" data-col="desc">说明</th></tr></thead><tbody>';
 var catOrd=['防水工程','泥瓦工程','木作工程','油漆工程','墙面工程','地面工程','顶面工程','门窗工程','暖气改造','下水改造','安装工程','楼梯工程','设备产品','定制产品','特殊五金','特殊工艺','背景墙','自定义'];
 var fg={};S.rooms.forEach(function(r){var f=r.floor||'一楼';if(!fg[f])fg[f]=[];fg[f].push(r)});
 var floors=Object.keys(fg).sort(function(a,b){return floorSortKey(a)-floorSortKey(b)});
 var allSections=[];
-floors.forEach(function(fl){var rooms=fg[fl];var fi=S.quoteItems.filter(function(q){return rooms.some(function(r){return r.id===q.roomId})&&q.category!=='拆除工程'&&q.category!=='砌筑工程'});if(fi.length)allSections.push({type:'floor',id:'floor-'+fl,label:'🏗️ '+fl,items:fi,rooms:rooms})});
-var demItems=S.quoteItems.filter(function(q){return q.category==='拆除工程'});if(demItems.length)allSections.push({type:'section',id:'demolition',label:'🔨 拆除工程',items:demItems});
-var masItems=S.quoteItems.filter(function(q){return q.category==='砌筑工程'});if(masItems.length)allSections.push({type:'section',id:'masonry',label:'🧱 砌筑工程',items:masItems});
-var ui=S.quoteItems.filter(function(q){return q.roomId==='__utility__'});if(ui.length)allSections.push({type:'section',id:'utility',label:'⚡ 水电暖气下水',items:ui});
+
+// 过滤楼层section
+floors.forEach(function(fl){var rooms=fg[fl];var fi=S.quoteItems.filter(function(q){return rooms.some(function(r){return r.id===q.roomId})&&q.category!=='拆除工程'&&q.category!=='砌筑工程'&&quoteItemMatchesSearch(q)});if(fi.length)allSections.push({type:'floor',id:'floor-'+fl,label:'🏗️ '+fl,items:fi,rooms:rooms})});
+
+// 过滤其他sections
+var demItems=S.quoteItems.filter(function(q){return q.category==='拆除工程'&&quoteItemMatchesSearch(q)});if(demItems.length)allSections.push({type:'section',id:'demolition',label:'🔨 拆除工程',items:demItems});
+var masItems=S.quoteItems.filter(function(q){return q.category==='砌筑工程'&&quoteItemMatchesSearch(q)});if(masItems.length)allSections.push({type:'section',id:'masonry',label:'🧱 砌筑工程',items:masItems});
+var ui=S.quoteItems.filter(function(q){return q.roomId==='__utility__'&&quoteItemMatchesSearch(q)});if(ui.length)allSections.push({type:'section',id:'utility',label:'⚡ 水电暖气下水',items:ui});
 allSections.forEach(function(sec){var sT=sec.items.reduce(function(s,q){return s+q.quantity*q.unitPrice},0);var secCol=_collapseState[sec.id];
-h+='<tr class="floor-row" onclick="toggleRoomCollapse(\''+sec.id+'\')" style="cursor:pointer"><td colspan="6" style="text-align:left;font-weight:600;color:var(--text)"><span class="room-collapse-icon" id="icon-'+sec.id+'">'+(secCol?'▶':'▼')+'</span> '+sec.label+'</td><td style="text-align:right;font-weight:600;color:var(--accent)">¥'+fmt(sT)+'</td><td class="no-print"></td></tr>';
+var floorItemIds = sec.items.map(function(q) { return q.id; });
+var floorSelected = floorItemIds.length > 0 && floorItemIds.every(function(id) { return S.qiSelectedIds.includes(id); });
+h+='<tr class="floor-row" onclick="toggleRoomCollapse(\''+sec.id+'\')" style="cursor:pointer"><td class="col-action no-print"></td><td class="no-print" style="text-align:center;vertical-align:middle"><input type="checkbox" onclick="event.stopPropagation();toggleFloorSelection(\''+sec.id+'\')" '+(floorSelected?'checked':'')+' style="cursor:pointer;width:16px;height:16px"></td><td colspan="7" style="text-align:left;font-weight:600;color:var(--text)"><span class="room-collapse-icon" id="icon-'+sec.id+'">'+(secCol?'▶':'▼')+'</span> '+sec.label+'</td></tr>';
 if(sec.type==='floor'){sec.rooms.forEach(function(room){var ri=sec.items.filter(function(q){return q.roomId===room.id});if(!ri.length)return;var rT=ri.reduce(function(s,q){return s+q.quantity*q.unitPrice},0);var seq=1;var roomCol=_collapseState[room.id];var roomCls=secCol||roomCol?' collapsed':'';
-h+='<tr class="sub-row room-toggle room-item-row'+roomCls+'" data-room-id="'+sec.id+'" onclick="toggleRoomCollapse(\''+room.id+'\')"><td colspan="6" style="padding-left:14px;cursor:pointer;text-align:left"><span class="room-collapse-icon" id="icon-'+room.id+'">'+(roomCol?'▶':'▼')+'</span> 📍 '+esc(room.name)+'</td><td style="text-align:right;font-weight:600;color:var(--accent)">¥'+fmt(rT)+'</td><td class="no-print"></td></tr>';
+var roomItemIds = ri.map(function(q) { return q.id; });
+var roomSelected = roomItemIds.length > 0 && roomItemIds.every(function(id) { return S.qiSelectedIds.includes(id); });
+h+='<tr class="sub-row room-toggle room-item-row'+roomCls+'" data-room-id="'+sec.id+'" onclick="toggleRoomCollapse(\''+room.id+'\')"><td class="col-action no-print"></td><td class="no-print" style="text-align:center;vertical-align:middle"><input type="checkbox" onclick="event.stopPropagation();toggleRoomSelection(\''+room.id+'\')" '+(roomSelected?'checked':'')+' style="cursor:pointer;width:16px;height:16px"></td><td colspan="7" style="padding-left:14px;cursor:pointer;text-align:left"><span class="room-collapse-icon" id="icon-'+room.id+'">'+(roomCol?'▶':'▼')+'</span> 📍 '+esc(room.name)+'</td></tr>';
 var itemCls=secCol||roomCol?' collapsed':'';
-catOrd.forEach(function(cat){var ci=ri.filter(function(q){return q.category===cat});if(!ci.length)return;var cT=ci.reduce(function(s,q){return s+q.quantity*q.unitPrice},0);h+='<tr class="room-item-row'+itemCls+'" data-room-id="'+sec.id+'" data-room-id2="'+room.id+'"><td colspan="6" style="text-align:left;padding-left:20px;font-size:10px;color:var(--text-dim);border-bottom:1px solid var(--border)">▸ '+cat+'</td><td style="text-align:right;font-size:10px;color:var(--text-dim);border-bottom:1px solid var(--border)">¥'+fmt(cT)+'</td><td class="no-print"></td></tr>';ci.forEach(function(qi){h+=qRow(qi,seq++,sec.id,room.id)})});h+='<tr class="room-item-row no-print'+itemCls+'" data-room-id="'+sec.id+'" data-room-id2="'+room.id+'"><td colspan="8" style="text-align:left;padding-left:24px;padding-top:2px;padding-bottom:2px"><button class="btn btn-outline btn-sm" style="font-size:14px;padding:1px 8px;border-radius:4px" onclick="showRoomItemPicker(\''+room.id+'\')">+ 添加项目</button><div id="picker-'+room.id+'" style="display:none;margin-top:4px"></div></td></tr>'})}else{var seq=1;sec.items.forEach(function(q){h+=qRow(q,seq++,sec.id)})}});
+catOrd.forEach(function(cat){var ci=ri.filter(function(q){return q.category===cat});if(!ci.length)return;var cT=ci.reduce(function(s,q){return s+q.quantity*q.unitPrice},0);h+='<tr class="room-item-row'+itemCls+'" data-room-id="'+sec.id+'" data-room-id2="'+room.id+'"><td class="col-action no-print"></td><td class="no-print"></td><td colspan="7" style="text-align:left;padding-left:20px;font-size:10px;color:var(--text-dim);border-bottom:1px solid var(--border)">▸ '+cat+'</td></tr>';ci.forEach(function(qi){h+=qRow(qi,seq++,sec.id,room.id)})});h+='<tr class="room-item-row no-print'+itemCls+'" data-room-id="'+sec.id+'" data-room-id2="'+room.id+'"><td class="col-action no-print"></td><td class="no-print"></td><td colspan="7" style="text-align:left;padding-left:24px;padding-top:2px;padding-bottom:2px"><button class="btn btn-outline btn-sm" style="font-size:14px;padding:1px 8px;border-radius:4px" onclick="showRoomItemPicker(\''+room.id+'\')">+ 添加项目</button><div id="picker-'+room.id+'" style="display:none;margin-top:4px"></div></td></tr>'})}else{var seq=1;sec.items.forEach(function(q){h+=qRow(q,seq++,sec.id)})}});
 var ci2=S.quoteItems.filter(function(q){return q.roomId==='__custom__'});
 if(ci2.length){var cs=1;
-h+='<tr class="cat-row"><td colspan="6" style="text-align:left;font-weight:600;color:var(--text)">📝 自定义</td><td></td><td></td><td class="no-print"></td></tr>';
+h+='<tr class="cat-row"><td class="col-action no-print"></td><td colspan="7" style="text-align:left;font-weight:600;color:var(--text)">📝 自定义</td></tr>';
 ci2.forEach(function(q){h+=qRow(q,cs++)})}
 if(S.productQuoteItems.length){
 var qm=S.customerInfo.quoteMode||'full';
 var showCats=qm==='full'?PRODUCT_MAIN_CATEGORIES:PRODUCT_MAIN_CATEGORIES.filter(function(mc){return mc.id!=='equipment'&&mc.id!=='soft_furnishing'});
-showCats.forEach(function(mc){var pi=S.productQuoteItems.filter(function(q){return q.mainCategory===mc.id});if(!pi.length)return;var pT=pi.reduce(function(s,q){return s+q.quantity*q.unitPrice},0);var ps=1;
-h+='<tr class="cat-row"><td colspan="6" style="text-align:left;font-weight:600;color:var(--text)">'+mc.icon+' '+mc.name+'</td><td style="text-align:right;font-weight:600;color:var(--accent)">¥'+fmt(pT)+'</td><td class="no-print"></td></tr>';
+showCats.forEach(function(mc){var pi=S.productQuoteItems.filter(function(q){return q.mainCategory===mc.id&&quoteItemMatchesSearch(q)});if(!pi.length)return;var pT=pi.reduce(function(s,q){return s+q.quantity*q.unitPrice},0);var ps=1;
+h+='<tr class="cat-row"><td class="col-action no-print"></td><td class="no-print"></td><td colspan="6" style="text-align:left;font-weight:600;color:var(--text)">'+mc.icon+' '+mc.name+'</td><td style="text-align:right;font-weight:600;color:var(--accent)">¥'+fmt(pT)+'</td></tr>';
 var subG={};pi.forEach(function(q){if(!subG[q.subCategory])subG[q.subCategory]=[];subG[q.subCategory].push(q)});
 Object.keys(subG).forEach(function(subId){var subI=subG[subId];var sT=subI.reduce(function(s,q){return s+q.quantity*q.unitPrice},0);
-h+='<tr><td colspan="6" style="text-align:left;padding-left:20px;font-size:10px;color:var(--text-dim);border-bottom:1px solid var(--border)">▸ '+getSubCatLabel(mc.id,subId)+'</td><td style="text-align:right;font-size:10px;color:var(--text-dim);border-bottom:1px solid var(--border)">¥'+fmt(sT)+'</td><td class="no-print"></td></tr>';
+h+='<tr><td class="col-action no-print"></td><td class="no-print"></td><td colspan="6" style="text-align:left;padding-left:20px;font-size:10px;color:var(--text-dim);border-bottom:1px solid var(--border)">▸ '+getSubCatLabel(mc.id,subId)+'</td><td style="text-align:right;font-size:10px;color:var(--text-dim);border-bottom:1px solid var(--border)">¥'+fmt(sT)+'</td></tr>';
 subI.forEach(function(q){h+=qRow(q,ps++)})})})}h+='</tbody></table>';w.innerHTML=h;updateQISelectionUI();}
-function qRow(qi,seq,sectionId,roomId){var a=qi.quantity*qi.unitPrice;var cls='room-item-row';var attrs=' data-room-id="'+sectionId+'"';if(roomId)attrs+=' data-room-id2="'+roomId+'"';var secCol=_collapseState[sectionId];var roomCol=roomId?_collapseState[roomId]:false;if(secCol||roomCol)cls+=' collapsed';var isSelected=S.qiSelectedIds && S.qiSelectedIds.includes(qi.id);return '<tr class="'+cls+'"'+attrs+'><td class="no-print" style="text-align:center;vertical-align:middle"><input type="checkbox" onclick="event.stopPropagation();toggleQISelection(\''+qi.id+'\')" '+(isSelected?'checked':'')+' style="cursor:pointer;width:16px;height:16px"></td><td>'+seq+'</td><td style="text-align:left;padding:4px 6px"><div class="qt-input qt-name" contenteditable="true" onblur="updateQI(\''+qi.id+'\',\'name\',this.textContent)" style="font-size:14px">'+esc(qi.name)+'</div></td><td><input class="qt-input qt-qty" type="number" value="'+qi.quantity+'" step="0.01" onchange="updateQI(\''+qi.id+'\',\'quantity\',this.value)" style="text-align:center;font-size:14px"></td><td><input class="qt-input qt-unit" value="'+esc(qi.unit)+'" onchange="updateQI(\''+qi.id+'\',\'unit\',this.value)" style="text-align:center;font-size:14px"></td><td><div style="display:flex;align-items:center;justify-content:center"><span style="color:var(--text-dim);margin-right:0;font-size:14px">¥</span><input class="qt-input qt-price" type="number" value="'+qi.unitPrice+'" step="0.01" onchange="updateQI(\''+qi.id+'\',\'unitPrice\',this.value)" style="text-align:center;padding-left:2px;font-size:14px"></div></td><td class="col-amount" style="font-size:14px">¥'+fmt(a)+'</td><td class="col-desc" style="text-align:left;padding:4px 6px"><div class="qt-input qt-desc" contenteditable="true" onblur="updateQI(\''+qi.id+'\',\'description\',this.textContent)" style="font-size:14px">'+esc(qi.description||'')+'</div></td><td class="col-action no-print" style="text-align:center;vertical-align:middle"><button class="btn-x" onclick="deleteQI(\''+qi.id+'\')" style="font-size:14px">×</button></td></tr>'}
+function qRow(qi,seq,sectionId,roomId){var a=qi.quantity*qi.unitPrice;var cls='room-item-row';var attrs=' data-room-id="'+sectionId+'"';if(roomId)attrs+=' data-room-id2="'+roomId+'"';var secCol=_collapseState[sectionId];var roomCol=roomId?_collapseState[roomId]:false;if(secCol||roomCol)cls+=' collapsed';var isSelected=S.qiSelectedIds && S.qiSelectedIds.includes(qi.id);return '<tr class="'+cls+'"'+attrs+'><td class="col-action no-print" style="text-align:center;vertical-align:middle"><button class="btn-x" onclick="deleteQI(\''+qi.id+'\')" style="font-size:14px">×</button></td><td class="no-print" style="text-align:center;vertical-align:middle"><input type="checkbox" onclick="event.stopPropagation();toggleQISelection(\''+qi.id+'\')" '+(isSelected?'checked':'')+' style="cursor:pointer;width:16px;height:16px"></td><td>'+seq+'</td><td style="text-align:left;padding:4px 6px"><div class="qt-input qt-name" contenteditable="true" onblur="updateQI(\''+qi.id+'\',\'name\',this.textContent)" style="font-size:14px">'+esc(qi.name)+'</div></td><td><input class="qt-input qt-qty" type="number" value="'+qi.quantity+'" step="0.01" onchange="updateQI(\''+qi.id+'\',\'quantity\',this.value)" style="text-align:center;font-size:14px"></td><td><input class="qt-input qt-unit" value="'+esc(qi.unit)+'" onchange="updateQI(\''+qi.id+'\',\'unit\',this.value)" style="text-align:center;font-size:14px"></td><td><div style="display:flex;align-items:center;justify-content:center"><span style="color:var(--text-dim);margin-right:0;font-size:14px">¥</span><input class="qt-input qt-price" type="number" value="'+qi.unitPrice+'" step="0.01" onchange="updateQI(\''+qi.id+'\',\'unitPrice\',this.value)" style="text-align:center;padding-left:2px;font-size:14px"></div></td><td class="col-amount" style="font-size:14px">¥'+fmt(a)+'</td><td class="col-desc" style="text-align:left;padding:4px 6px"><div class="qt-input qt-desc" contenteditable="true" onblur="updateQI(\''+qi.id+'\',\'description\',this.textContent)" style="font-size:14px">'+esc(qi.description||'')+'</div></td></tr>'}
 function toggleQISelection(id){if(!S.qiSelectedIds) S.qiSelectedIds = [];var idx=S.qiSelectedIds.indexOf(id);if(idx>=0){S.qiSelectedIds.splice(idx,1);}else{S.qiSelectedIds.push(id);}renderQuoteTable();}
-function toggleQISelectAll(){var allItems=S.quoteItems.concat(S.productQuoteItems);var checkbox1=document.getElementById('qiSelectAll');var checkbox2=document.getElementById('qiSelectAll2');var checked=(checkbox1 && checkbox1.checked) || (checkbox2 && checkbox2.checked);if(!S.qiSelectedIds) S.qiSelectedIds = [];if(checked){S.qiSelectedIds=allItems.map(function(q){return q.id;});}else{S.qiSelectedIds=[];}renderQuoteTable();}
+function toggleFloorSelection(sectionId){
+  var section;
+  var allSections=[];
+  var catOrd=['防水工程','泥瓦工程','木作工程','油漆工程','墙面工程','地面工程','顶面工程','门窗工程','暖气改造','下水改造','安装工程','楼梯工程','设备产品','定制产品','特殊五金','特殊工艺','背景墙','自定义'];
+  var fg={};S.rooms.forEach(function(r){var f=r.floor||'一楼';if(!fg[f])fg[f]=[];fg[f].push(r)});
+  var floors=Object.keys(fg).sort(function(a,b){return floorSortKey(a)-floorSortKey(b)});
+  floors.forEach(function(fl){var rooms=fg[fl];var fi=S.quoteItems.filter(function(q){return rooms.some(function(r){return r.id===q.roomId})&&q.category!=='拆除工程'&&q.category!=='砌筑工程'});if(fi.length)allSections.push({type:'floor',id:'floor-'+fl,label:'🏗️ '+fl,items:fi,rooms:rooms})});
+  var demItems=S.quoteItems.filter(function(q){return q.category==='拆除工程'});if(demItems.length)allSections.push({type:'section',id:'demolition',label:'🔨 拆除工程',items:demItems});
+  var masItems=S.quoteItems.filter(function(q){return q.category==='砌筑工程'});if(masItems.length)allSections.push({type:'section',id:'masonry',label:'🧱 砌筑工程',items:masItems});
+  var ui=S.quoteItems.filter(function(q){return q.roomId==='__utility__'});if(ui.length)allSections.push({type:'section',id:'utility',label:'⚡ 水电暖气下水',items:ui});
+  
+  var sec=allSections.find(function(s){return s.id===sectionId});
+  if(!sec)return;
+  
+  var itemIds=sec.items.map(function(q){return q.id;});
+  var allSelected=itemIds.length>0 && itemIds.every(function(id){return S.qiSelectedIds.includes(id);});
+  
+  if(!S.qiSelectedIds) S.qiSelectedIds = [];
+  
+  if(allSelected){
+    itemIds.forEach(function(id){
+      var idx=S.qiSelectedIds.indexOf(id);
+      if(idx>=0){S.qiSelectedIds.splice(idx,1);}
+    });
+  }else{
+    itemIds.forEach(function(id){
+      if(S.qiSelectedIds.indexOf(id)===-1){
+        S.qiSelectedIds.push(id);
+      }
+    });
+  }
+  renderQuoteTable();
+}
+function toggleRoomSelection(roomId){
+  var roomItems=S.quoteItems.filter(function(q){return q.roomId===roomId});
+  var itemIds=roomItems.map(function(q){return q.id;});
+  var allSelected=itemIds.length>0 && itemIds.every(function(id){return S.qiSelectedIds.includes(id);});
+  
+  if(!S.qiSelectedIds) S.qiSelectedIds = [];
+  
+  if(allSelected){
+    itemIds.forEach(function(id){
+      var idx=S.qiSelectedIds.indexOf(id);
+      if(idx>=0){S.qiSelectedIds.splice(idx,1);}
+    });
+  }else{
+    itemIds.forEach(function(id){
+      if(S.qiSelectedIds.indexOf(id)===-1){
+        S.qiSelectedIds.push(id);
+      }
+    });
+  }
+  renderQuoteTable();
+}
+function toggleQISelectAll(){var allItems=S.quoteItems.concat(S.productQuoteItems);if(!S.qiSelectedIds) S.qiSelectedIds = [];var count=(S.qiSelectedIds || []).length;var allChecked=allItems.length>0 && count===allItems.length;if(allChecked){S.qiSelectedIds=[];}else{S.qiSelectedIds=allItems.map(function(q){return q.id;});}renderQuoteTable();}
 function updateQISelectionUI(){var count=(S.qiSelectedIds || []).length;var countEl=document.getElementById('qiSelectedCount');var btnEl=document.getElementById('qiDeleteSelectedBtn');var checkbox1=document.getElementById('qiSelectAll');var checkbox2=document.getElementById('qiSelectAll2');var allItems=S.quoteItems.concat(S.productQuoteItems);var allChecked=allItems.length>0 && count===allItems.length;if(countEl) countEl.textContent=count;if(btnEl) btnEl.disabled=count===0;if(checkbox1) checkbox1.checked=allChecked;if(checkbox2) checkbox2.checked=allChecked;}
 function deleteSelectedQI(){var count=(S.qiSelectedIds || []).length;if(!count){showToast('请先选择要删除的报价项目');return;}if(!confirm('确定要删除已选的 '+count+' 个报价项目吗？')) return;pushUndoState();var deletedIds=S.qiSelectedIds || [];S.quoteItems=S.quoteItems.filter(function(q){return !deletedIds.includes(q.id);});S.productQuoteItems=S.productQuoteItems.filter(function(q){return !deletedIds.includes(q.id);});S.qiSelectedIds=[];debounceRenderQuoteTable();renderSummary();markDirty();showToast('已删除 '+count+' 个报价项目');}
-function updateQI(id,f,v){pushUndoState();var q=S.quoteItems.concat(S.productQuoteItems).find(function(x){return x.id===id});if(!q)return;if(f==='quantity'||f==='unitPrice')q[f]=parseFloat(v)||0;else q[f]=v;debounceRenderQuoteTable();markDirty()}
+function updateQI(id,f,v){
+  pushUndoState();
+  var q=S.quoteItems.concat(S.productQuoteItems).find(function(x){return x.id===id});
+  if(!q)return;
+
+  if(f==='quantity'||f==='unitPrice'){
+    var numVal = parseFloat(v);
+    if(isNaN(numVal) || numVal < 0){
+      showToast('请输入有效的正数');
+      renderQuoteTable();
+      return;
+    }
+    q[f]=numVal;
+  }else{
+    q[f]=v;
+  }
+  debounceRenderQuoteTable();
+  markDirty()
+}
 function deleteQI(id){pushUndoState();S.quoteItems=S.quoteItems.filter(function(q){return q.id!==id});S.productQuoteItems=S.productQuoteItems.filter(function(q){return q.id!==id});debounceRenderQuoteTable();markDirty()}
 function addCustomQuoteItem(){pushUndoState();S.quoteItems.push({id:uid(),roomId:'__custom__',name:'自定义项目',quantity:1,unit:'项',unitPrice:0,description:'',category:'自定义'});debounceRenderQuoteTable();markDirty()}
 
@@ -2548,21 +2658,300 @@ function saveAsTemplatePrompt() {
   saveCurrentAsTemplate(name);
 }
 
+/**
+ * 打开模板选择对话框
+ */
+function createFromTemplatePrompt() {
+  if (!S.templates || S.templates.length === 0) {
+    showToast('暂无保存的模板');
+    return;
+  }
+
+  var modalBody = document.getElementById('templateSelectBody');
+  if (!modalBody) return;
+
+  var html = '<div style="display:flex;flex-direction:column;gap:8px">';
+  S.templates.forEach(function(template) {
+    var date = new Date(template.createdAt);
+    html += '<div class="template-item" style="display:flex;align-items:center;justify-content:space-between;padding:10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:all .15s" onclick="useTemplate(\'' + template.id + '\')" onmouseenter="this.style.borderColor=\'var(--accent)\';this.style.background=\'var(--accent-dim)\'" onmouseleave="this.style.borderColor=\'var(--border)\';this.style.background=\'transparent\'">' +
+      '<div>' +
+      '<div style="font-weight:600;font-size:13px;color:var(--text)">' + esc(template.name) + '</div>' +
+      '<div style="font-size:11px;color:var(--text-dim)">' + date.toLocaleString() + '</div>' +
+      '</div>' +
+      '<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteTemplateAndRefresh(\'' + template.id + '\')" style="font-size:11px">删除</button>' +
+      '</div>';
+  });
+  html += '</div>';
+
+  modalBody.innerHTML = html;
+  openModal('templateSelectModal');
+}
+
+/**
+ * 使用模板创建新报价
+ */
+function useTemplate(templateId) {
+  closeModal('templateSelectModal');
+  checkDirty(function() {
+    createNewFile('quotation');
+    createFromTemplate(templateId);
+  });
+}
+
+/**
+ * 删除模板并刷新列表
+ */
+function deleteTemplateAndRefresh(templateId) {
+  if (!confirm('确定删除此模板？')) return;
+  S.templates = S.templates.filter(function(t) {
+    return t.id !== templateId;
+  });
+  saveTemplatesToStorage();
+  showToast('模板已删除');
+  createFromTemplatePrompt(); // 重新打开对话框
+}
+
 // ==================== INIT ====================
-try{loadState();if(typeof License !== 'undefined') License.checkOnLoad();setTheme(S.currentTheme);renderSidebar();showView('welcome');
-if(typeof applyBranding==='function'){applyBranding()}else if(typeof LOGO_BASE64==='string'){document.getElementById('headerLogo').src=LOGO_BASE64;document.getElementById('welcomeLogo').src=LOGO_BASE64}
-if(S.recentFileIds.length>0){var last=S.files.find(function(f){return f.id===S.recentFileIds[0]});if(last)openFile(last.id)}}catch(e){console.error('Init error:',e);showView('welcome')}
+
+// 自动保存相关变量
+var _autoSaveTimer = null;
+var _autoSaveInterval = 2 * 60 * 1000; // 2分钟
+var _draftKey = 'banma_quotation_draft';
+
+// 重做栈
+var _redoStack = [];
+
+/**
+ * 自动保存草稿到 sessionStorage
+ */
+function autoSaveDraft() {
+  if (!S.currentFileId || !S.dirty) return;
+  try {
+    var currentFile = S.files.find(function(f){return f.id===S.currentFileId});
+    if (!currentFile) return;
+
+    var draftData = {
+      fileId: S.currentFileId,
+      fileName: currentFile.name,
+      data: currentFile.data,
+      timestamp: Date.now()
+    };
+    sessionStorage.setItem(_draftKey, JSON.stringify(draftData));
+    console.log('[AutoSave] 草稿已保存');
+
+    // 显示短暂的提示
+    var toast = document.getElementById('toast');
+    if (toast) {
+      var originalText = toast.textContent;
+      toast.innerHTML = '💾 草稿已自动保存';
+      toast.classList.add('show');
+      setTimeout(function() {
+        toast.classList.remove('show');
+      }, 1500);
+    }
+  } catch (e) {
+    console.warn('[AutoSave] 保存失败:', e);
+  }
+}
+
+/**
+ * 检查并恢复草稿
+ */
+function checkAndRestoreDraft() {
+  try {
+    var draftStr = sessionStorage.getItem(_draftKey);
+    if (!draftStr) return;
+
+    var draft = JSON.parse(draftStr);
+    if (!draft || !draft.fileId) return;
+
+    var currentFile = S.files.find(function(f){return f.id===draft.fileId});
+    if (!currentFile) {
+      sessionStorage.removeItem(_draftKey);
+      return;
+    }
+
+    var draftTime = new Date(draft.timestamp);
+    var now = new Date();
+    var minsDiff = (now - draftTime) / (1000 * 60);
+
+    if (minsDiff > 60) {
+      sessionStorage.removeItem(_draftKey);
+      return;
+    }
+
+    if (confirm('发现未保存的草稿（' + draftTime.toLocaleTimeString() + '），是否恢复？')) {
+      currentFile.data = draft.data;
+      if (S.currentFileId === draft.fileId) {
+        loadCurrentFileData();
+        renderAll();
+      }
+      showToast('草稿已恢复');
+    }
+
+    sessionStorage.removeItem(_draftKey);
+  } catch (e) {
+    console.warn('[AutoSave] 恢复草稿失败:', e);
+  }
+}
+
+/**
+ * 启动自动保存
+ */
+function startAutoSave() {
+  if (_autoSaveTimer) clearInterval(_autoSaveTimer);
+  _autoSaveTimer = setInterval(autoSaveDraft, _autoSaveInterval);
+}
+
+/**
+ * 停止自动保存
+ */
+function stopAutoSave() {
+  if (_autoSaveTimer) {
+    clearInterval(_autoSaveTimer);
+    _autoSaveTimer = null;
+  }
+}
+
+/**
+ * 更新文档标题，显示脏状态
+ */
+function updateDocumentTitle() {
+  var baseTitle = '斑马丨精装报价系统';
+  if (S.dirty) {
+    document.title = '* ' + baseTitle;
+  } else {
+    document.title = baseTitle;
+  }
+}
+
+// 重写 markDirty 以支持标题更新
+var _originalMarkDirty = markDirty;
+markDirty = function() {
+  _originalMarkDirty();
+  updateDocumentTitle();
+};
+
+/**
+ * 重做操作
+ */
+function redo() {
+  if (_redoStack.length === 0) {
+    showToast('没有可重做的操作');
+    return;
+  }
+
+  pushUndoState(); // 保存当前状态到撤销栈
+  var state = _redoStack.pop();
+  S.customerInfo = state.customerInfo;
+  S.rooms = state.rooms;
+  S.quoteItems = state.quoteItems;
+  S.productQuoteItems = state.productQuoteItems;
+  S.customNotes = state.customNotes;
+  S.managementFeeRate = state.managementFeeRate;
+  S.taxRate = state.taxRate;
+  S.garbageFee = state.garbageFee;
+  S.protectionFee = state.protectionFee;
+
+  renderCustomerInfo();
+  renderRoomList();
+  renderQuoteTable();
+  renderSummary();
+  document.getElementById('customNotes').value = S.customNotes;
+  showToast('已重做');
+  markDirty();
+}
+
+// 重写 pushUndoState 以清空重做栈
+var _originalPushUndoState = pushUndoState;
+pushUndoState = function() {
+  _originalPushUndoState();
+  _redoStack = [];
+};
+
+// 重写 undo 以支持重做
+var _originalUndo = undo;
+undo = function() {
+  if (S.undoStack.length === 0) {
+    showToast('没有可撤销的操作');
+    return;
+  }
+
+  // 保存当前状态到重做栈
+  var currentState = {
+    customerInfo: StateUtils.deepClone(S.customerInfo),
+    rooms: StateUtils.deepClone(S.rooms),
+    quoteItems: StateUtils.deepClone(S.quoteItems),
+    productQuoteItems: StateUtils.deepClone(S.productQuoteItems),
+    customNotes: S.customNotes,
+    managementFeeRate: S.managementFeeRate,
+    taxRate: S.taxRate,
+    garbageFee: S.garbageFee,
+    protectionFee: S.protectionFee
+  };
+  _redoStack.push(currentState);
+
+  _originalUndo();
+};
+
+try{
+  loadState();
+  if(typeof License !== 'undefined') License.checkOnLoad();
+  setTheme(S.currentTheme);
+  renderSidebar();
+  showView('welcome');
+
+  if(typeof applyBranding==='function'){
+    applyBranding();
+  } else if(typeof LOGO_BASE64==='string'){
+    document.getElementById('headerLogo').src=LOGO_BASE64;
+    document.getElementById('welcomeLogo').src=LOGO_BASE64;
+  }
+
+  if(S.recentFileIds.length>0){
+    var last=S.files.find(function(f){return f.id===S.recentFileIds[0]});
+    if(last) openFile(last.id);
+  }
+
+  // 检查草稿恢复
+  checkAndRestoreDraft();
+
+  // 启动自动保存
+  startAutoSave();
+}catch(e){
+  console.error('Init error:',e);
+  showView('welcome');
+}
+
 document.addEventListener('keydown',function(e){
   if(e.ctrlKey&&e.key==='s'){e.preventDefault();saveCurrentFile()}
-  if(e.ctrlKey&&e.key==='z'){e.preventDefault();undo()}
+  if(e.ctrlKey&&e.key==='z'&&!e.shiftKey){e.preventDefault();undo()}
+  if(e.ctrlKey&&e.key==='y'||(e.ctrlKey&&e.shiftKey&&e.key==='z')){e.preventDefault();redo()}
+  if(e.key==='Escape'){closeAllModals()}
 });
+
+/**
+ * 关闭所有打开的模态框
+ */
+function closeAllModals() {
+  var modals = ['importDialogModal','importConfirmModal','saveFileModal','addProdToQuoteModal',
+                'bossPwdModal','aiAuditModal','materialLibModal','spaceTypeLibModal',
+                'roomEditorModal','msRoomEditorModal','saveAsModal','productDbModal',
+                'aiProductSearchModal','templateSelectModal'];
+  modals.forEach(function(id) {
+    var modal = document.getElementById(id);
+    if (modal && modal.classList.contains('active')) {
+      closeModal(id);
+    }
+  });
+}
 document.addEventListener('click',closeAllMenus);
 // Column resize
 (function(){var colMap={num:'.col-num',name:'.col-name',qty:'.col-qty',unit:'.col-unit',price:'.col-price',amount:'.col-amount',desc:'.col-desc',action:'.col-action'};var fixedCols={num:24,name:120,qty:24,unit:24,price:90,amount:100,desc:null,action:10};function applyColWidths(){var w=S.colWidths||{};Object.keys(fixedCols).forEach(function(k){if(fixedCols[k]!==null&&!w[k])w[k]=fixedCols[k]});var style=document.getElementById('dynColStyle');if(!style){style=document.createElement('style');style.id='dynColStyle';document.head.appendChild(style)}var rules=[];rules.push('.quote-table{table-layout:fixed;width:100%}');Object.keys(w).forEach(function(c){var s=colMap[c];if(s&&w[c])rules.push('.quote-table '+s+'{width:'+w[c]+'px;min-width:'+w[c]+'px;max-width:'+w[c]+'px}');});rules.push('.quote-table .col-desc{width:auto!important}');rules.push('.quote-table th,.quote-table td{vertical-align:middle;text-align:center}');rules.push('.quote-table td.col-name,.quote-table td.col-desc{text-align:left}');style.textContent=rules.join('\n');}window.applyColWidths=applyColWidths;applyColWidths();var resizing=null,startX=0,startW=0,startCol=null;document.addEventListener('mousedown',function(e){var th=e.target.closest('th.resizable');if(!th)return;var rect=th.getBoundingClientRect();if(rect.right-e.clientX>8)return;var col=th.dataset.col;if(!col)return;resizing=th;startX=e.clientX;startCol=col;startW=S.colWidths&&S.colWidths[col]?S.colWidths[col]:fixedCols[col]||100;e.preventDefault();e.stopPropagation();});document.addEventListener('mousemove',function(e){if(!resizing)return;var newW=Math.max(10,startW+(e.clientX-startX));if(!S.colWidths)S.colWidths={};S.colWidths[startCol]=newW;applyColWidths();markDirty();});document.addEventListener('mouseup',function(){resizing=null;startCol=null;});})();
 ;function applyQuoteTableStyles(){applyColWidths();var fs=S.fontSizes||{table:12,header:12,project:14,description:11,input:11};var style=document.getElementById('dynFontStyle');if(!style){style=document.createElement('style');style.id='dynFontStyle';document.head.appendChild(style)}var rules=[];rules.push('.quote-table{font-size:'+fs.table+'px}');rules.push('.quote-table th{font-size:'+fs.header+'px}');rules.push('div.qt-name{font-size:'+fs.project+'px}');rules.push('div.qt-desc{font-size:'+fs.description+'px}');rules.push('.qt-input{font-size:'+fs.input+'px}');rules.push('div.qt-input{min-height:'+(S.rowHeight||36)+'px}');rules.push('.quote-table th,.quote-table td{vertical-align:middle}');rules.push('.quote-table td.col-name,.quote-table td.col-desc{vertical-align:middle}');style.textContent=rules.join('\n');document.querySelectorAll('.quote-table').forEach(function(t){t.style.fontSize=fs.table+'px'});document.querySelectorAll('.quote-table th').forEach(function(th){th.style.fontSize=fs.header+'px'});document.querySelectorAll('div.qt-name').forEach(function(el){el.style.fontSize=fs.project+'px'});document.querySelectorAll('div.qt-desc').forEach(function(el){el.style.fontSize=fs.description+'px'});document.querySelectorAll('.qt-input').forEach(function(el){el.style.fontSize=fs.input+'px'});document.querySelectorAll('div.qt-input').forEach(function(el){el.style.minHeight=(S.rowHeight||36)+'px'})}
 // Row resize
 (function(){var resizeRow=null,startY=0,startH=0;document.addEventListener('mousedown',function(e){var td=e.target.closest('td');if(!td)return;var tr=td.parentElement;if(!tr||!tr.closest('.quote-table'))return;var rect=td.getBoundingClientRect();if(rect.bottom-e.clientY<6){resizeRow=tr;startY=e.clientY;startH=tr.offsetHeight;e.preventDefault()}});document.addEventListener('mousemove',function(e){if(!resizeRow)return;resizeRow.style.height=Math.max(22,startH+(e.clientY-startY))+'px'});document.addEventListener('mouseup',function(){resizeRow=null})})();
-['importDialogModal','importConfirmModal','saveFileModal','addProdToQuoteModal','bossPwdModal','aiAuditModal'].forEach(function(id){document.getElementById(id).addEventListener('click',function(e){if(e.target===this)closeModal(id)})});
+['importDialogModal','importConfirmModal','saveFileModal','addProdToQuoteModal','bossPwdModal','aiAuditModal','materialLibModal','spaceTypeLibModal','roomEditorModal','msRoomEditorModal','saveAsModal','productDbModal','aiProductSearchModal','templateSelectModal'].forEach(function(id){var el=document.getElementById(id);if(el)el.addEventListener('click',function(e){if(e.target===this)closeModal(id)})});
 
 // ==================== AI 计算器 ====================
 function showAICalculator() {
